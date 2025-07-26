@@ -1,4 +1,4 @@
-// components/AddCardPage.js - 修復版，調整頭部位置避免動態島遮擋
+// components/AddCardPage.js - 專業UI重新設計版本
 import React, { useState } from 'react';
 import {
   View,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const HONG_KONG_BANKS = [
   { value: 'hsbc', label: 'HSBC', color: '#db0011' },
@@ -24,37 +25,47 @@ const HONG_KONG_BANKS = [
   { value: 'other', label: 'Other Bank', color: '#666666' }
 ];
 
-const CARD_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
-];
-
 export default function AddCardPage({ onAddCard, onBack }) {
-  const [selectedBank, setSelectedBank] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
   const [dueDay, setDueDay] = useState('');
-  const [selectedColor, setSelectedColor] = useState(CARD_COLORS[0]);
-  const [showBankPicker, setShowBankPicker] = useState(false);
+  const [selectedBank, setSelectedBank] = useState('');
   const [errors, setErrors] = useState({});
+
+  const formatCardNumber = (text) => {
+    // 移除所有非數字字符
+    const cleaned = text.replace(/\D/g, '');
+    
+    // 每4位數字加一個空格
+    const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
+    
+    return formatted;
+  };
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!selectedBank) {
-      newErrors.bank = 'Please select a bank';
+    if (!cardNumber.trim()) {
+      newErrors.cardNumber = 'Card number is required';
+    } else if (cardNumber.replace(/\s/g, '').length < 16) {
+      newErrors.cardNumber = 'Invalid card number';
     }
 
     if (!cardName.trim()) {
-      newErrors.cardName = 'Please enter card name';
+      newErrors.cardName = 'Card name is required';
     }
 
     if (!dueDay.trim()) {
-      newErrors.dueDay = 'Please enter due day';
+      newErrors.dueDay = 'Due date is required';
     } else {
       const day = parseInt(dueDay);
       if (isNaN(day) || day < 1 || day > 31) {
         newErrors.dueDay = 'Please enter a valid day (1-31)';
       }
+    }
+
+    if (!selectedBank) {
+      newErrors.bank = 'Please select an issuing bank';
     }
 
     setErrors(newErrors);
@@ -66,10 +77,11 @@ export default function AddCardPage({ onAddCard, onBack }) {
       const selectedBankInfo = HONG_KONG_BANKS.find(bank => bank.value === selectedBank);
       
       const newCard = {
+        number: cardNumber.replace(/\s/g, ''), // 儲存時移除空格
         name: cardName.trim(),
         bank: selectedBankInfo?.label || 'Other Bank',
         dueDay: dueDay.trim(),
-        color: selectedColor,
+        color: selectedBankInfo?.color || '#666666',
         notificationEnabled: true
       };
 
@@ -83,176 +95,124 @@ export default function AddCardPage({ onAddCard, onBack }) {
     }
   };
 
-  const getBankColor = (bankValue) => {
-    const bank = HONG_KONG_BANKS.find(b => b.value === bankValue);
-    return bank ? bank.color : '#666666';
-  };
-
-  const selectedBankInfo = HONG_KONG_BANKS.find(bank => bank.value === selectedBank);
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backIcon}>←</Text>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => onBack('MyCards')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.title}>Add New Card</Text>
+        <Text style={styles.title}>Add Card</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Bank Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Bank</Text>
-          <TouchableOpacity
-            style={[
-              styles.bankSelector,
-              errors.bank && styles.errorInput
-            ]}
-            onPress={() => setShowBankPicker(!showBankPicker)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              styles.bankSelectorText,
-              selectedBank ? styles.selectedBankText : styles.placeholderText
-            ]}>
-              {selectedBankInfo ? selectedBankInfo.label : 'Choose your bank'}
-            </Text>
-            <Text style={styles.dropdownIcon}>▼</Text>
-          </TouchableOpacity>
-          {errors.bank && <Text style={styles.errorText}>{errors.bank}</Text>}
-
-          {/* Bank Options */}
-          {showBankPicker && (
-            <View style={styles.bankOptions}>
-              {HONG_KONG_BANKS.map((bank, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.bankOption}
-                  onPress={() => {
-                    setSelectedBank(bank.value);
-                    setShowBankPicker(false);
-                    clearError('bank');
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.bankIndicator, { backgroundColor: bank.color }]} />
-                  <Text style={styles.bankOptionText}>{bank.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Card Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Card Details</Text>
-          
+        <View style={styles.formContainer}>
+          {/* Card Number */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Card Name</Text>
+            <Text style={styles.label}>Card Number</Text>
             <TextInput
-              style={[
-                styles.textInput,
-                errors.cardName && styles.errorInput
-              ]}
-              placeholder="e.g., HSBC Red Card"
-              placeholderTextColor="#666666"
+              style={[styles.input, errors.cardNumber && styles.inputError]}
+              placeholder="1234 5678 9012 3456"
+              placeholderTextColor="#999999"
+              value={cardNumber}
+              onChangeText={(text) => {
+                setCardNumber(formatCardNumber(text));
+                clearError('cardNumber');
+              }}
+              keyboardType="numeric"
+              maxLength={19} // 16數字 + 3空格
+            />
+            {errors.cardNumber && (
+              <Text style={styles.errorText}>{errors.cardNumber}</Text>
+            )}
+          </View>
+
+          {/* Card Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Card Name</Text>
+            <TextInput
+              style={[styles.input, errors.cardName && styles.inputError]}
+              placeholder="e.g., Visa Signature, Enjoy Card"
+              placeholderTextColor="#999999"
               value={cardName}
               onChangeText={(text) => {
                 setCardName(text);
                 clearError('cardName');
               }}
             />
-            {errors.cardName && <Text style={styles.errorText}>{errors.cardName}</Text>}
+            {errors.cardName && (
+              <Text style={styles.errorText}>{errors.cardName}</Text>
+            )}
           </View>
 
+          {/* Due Date */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Payment Due Day</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                errors.dueDay && styles.errorInput
-              ]}
-              placeholder="Day of month (1-31)"
-              placeholderTextColor="#666666"
-              value={dueDay}
-              onChangeText={(text) => {
-                setDueDay(text);
-                clearError('dueDay');
-              }}
-              keyboardType="numeric"
-              maxLength={2}
-            />
-            {errors.dueDay && <Text style={styles.errorText}>{errors.dueDay}</Text>}
-            <Text style={styles.helperText}>
-              Enter the day of the month when payment is due (e.g., 15 for 15th of each month)
-            </Text>
-          </View>
-        </View>
-
-        {/* Color Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Card Color</Text>
-          <View style={styles.colorGrid}>
-            {CARD_COLORS.map((color, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color },
-                  selectedColor === color && styles.selectedColor
-                ]}
-                onPress={() => setSelectedColor(color)}
-                activeOpacity={0.8}
-              >
-                {selectedColor === color && (
-                  <Text style={styles.colorCheckmark}>✓</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Card Preview */}
-        {(cardName || selectedBank) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preview</Text>
-            <View style={[
-              styles.cardPreview,
-              { 
-                backgroundColor: selectedColor,
-                borderLeftColor: getBankColor(selectedBank)
-              }
-            ]}>
-              <View style={styles.previewContent}>
-                <Text style={styles.previewCardName}>
-                  {cardName || 'Card Name'}
-                </Text>
-                <Text style={styles.previewBankName}>
-                  {selectedBankInfo?.label || 'Bank Name'}
-                </Text>
-                <Text style={styles.previewDueDate}>
-                  Due: {dueDay || 'XX'}th of each month
-                </Text>
-              </View>
+            <Text style={styles.label}>Due Date</Text>
+            <View style={styles.dueDateContainer}>
+              <TextInput
+                style={[styles.dueDateInput, errors.dueDay && styles.inputError]}
+                placeholder="DD"
+                placeholderTextColor="#999999"
+                value={dueDay}
+                onChangeText={(text) => {
+                  setDueDay(text);
+                  clearError('dueDay');
+                }}
+                keyboardType="numeric"
+                maxLength={2}
+              />
+              <Text style={styles.dueDateText}>of each month</Text>
             </View>
+            {errors.dueDay && (
+              <Text style={styles.errorText}>{errors.dueDay}</Text>
+            )}
           </View>
-        )}
 
-        {/* Submit Button */}
-        <View style={styles.submitSection}>
+          {/* Issuing Bank */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Issuing Bank</Text>
+            <View style={styles.banksGrid}>
+              {HONG_KONG_BANKS.map((bank, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.bankOption,
+                    selectedBank === bank.value && styles.bankOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedBank(bank.value);
+                    clearError('bank');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.bankOptionText,
+                    selectedBank === bank.value && styles.bankOptionTextSelected
+                  ]}>
+                    {bank.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {errors.bank && (
+              <Text style={styles.errorText}>{errors.bank}</Text>
+            )}
+          </View>
+
+          {/* Save Button */}
           <TouchableOpacity
-            style={styles.submitButton}
+            style={styles.saveButton}
             onPress={handleSubmit}
             activeOpacity={0.8}
           >
-            <Text style={styles.submitButtonText}>Add Credit Card</Text>
+            <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -261,35 +221,32 @@ export default function AddCardPage({ onAddCard, onBack }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60, // 調整位置避免動態島遮擋
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#E0E0E0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+    padding: 8,
+    marginRight: 8,
   },
   title: {
-    color: '#FFFFFF',
+    flex: 1,
     fontSize: 20,
     fontWeight: '600',
+    color: '#000000',
+    textAlign: 'center',
   },
   placeholder: {
     width: 40,
@@ -297,171 +254,92 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  bankSelector: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  bankSelectorText: {
-    fontSize: 16,
-    flex: 1,
-  },
-  selectedBankText: {
-    color: '#FFFFFF',
-  },
-  placeholderText: {
-    color: '#666666',
-  },
-  dropdownIcon: {
-    color: '#666666',
-    fontSize: 12,
-  },
-  bankOptions: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-    maxHeight: 200,
-  },
-  bankOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-  },
-  bankIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  bankOptionText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  formContainer: {
+    padding: 16,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  inputLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333333',
     marginBottom: 8,
   },
-  textInput: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    color: '#FFFFFF',
+    paddingVertical: 12,
     fontSize: 16,
+    color: '#000000',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#E0E0E0',
   },
-  helperText: {
-    color: '#999999',
-    fontSize: 12,
-    marginTop: 4,
-    lineHeight: 16,
+  inputError: {
+    borderColor: '#F44336',
   },
-  colorGrid: {
+  dueDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dueDateInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#000000',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    width: 80,
+    textAlign: 'center',
+  },
+  dueDateText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#666666',
+  },
+  banksGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    marginHorizontal: -4,
   },
-  colorOption: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'transparent',
+  bankOption: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    margin: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  selectedColor: {
-    borderColor: '#FFFFFF',
+  bankOptionSelected: {
+    backgroundColor: '#000000',
+    borderColor: '#000000',
   },
-  colorCheckmark: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  cardPreview: {
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 4,
-    minHeight: 120,
-    justifyContent: 'center',
-  },
-  previewContent: {
-    flex: 1,
-  },
-  previewCardName: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  previewBankName: {
-    color: '#FFFFFF',
+  bankOptionText: {
     fontSize: 14,
-    marginBottom: 4,
-    opacity: 0.9,
+    color: '#333333',
   },
-  previewDueDate: {
+  bankOptionTextSelected: {
     color: '#FFFFFF',
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  submitSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  errorInput: {
-    borderColor: '#FF3B30',
   },
   errorText: {
-    color: '#FF3B30',
+    color: '#F44336',
     fontSize: 12,
     marginTop: 4,
   },
-  bottomSpacing: {
-    height: 20,
+  saveButton: {
+    backgroundColor: '#000000',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

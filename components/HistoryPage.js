@@ -1,4 +1,4 @@
-// components/HistoryPage.js - 修復版，添加標題並移除金額顯示
+// components/HistoryPage.js - Updated with white background and English language
 import React, { useState } from 'react';
 import {
   View,
@@ -7,197 +7,255 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  TextInput
+  TextInput,
+  Alert
 } from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function HistoryPage({ 
   paymentHistory = [], 
-  creditCards = [], 
+  creditCards = [],
   onBack 
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 計算統計數據
-  const calculateStats = () => {
+  // Get card name from card ID
+  const getCardName = (cardId) => {
+    const card = creditCards.find(c => c.id === cardId);
+    return card ? card.name : 'Unknown Card';
+  };
+
+  // Get card bank from card ID
+  const getCardBank = (cardId) => {
+    const card = creditCards.find(c => c.id === cardId);
+    return card ? card.bank : 'Unknown Bank';
+  };
+
+  // Get card due day from card ID
+  const getCardDueDay = (cardId) => {
+    const card = creditCards.find(c => c.id === cardId);
+    return card ? card.dueDay : null;
+  };
+
+  // Calculate statistics for the payment history
+  const calculateStatistics = () => {
     const totalPayments = paymentHistory.length;
-    const onTimePayments = paymentHistory.filter(p => p.onTime).length;
-    const latePayments = totalPayments - onTimePayments;
-    const onTimeRate = totalPayments > 0 ? (onTimePayments / totalPayments * 100) : 0;
+    const onTimePayments = paymentHistory.filter(payment => payment.onTime === true).length;
+    const latePayments = paymentHistory.filter(payment => payment.onTime === false).length;
+    const onTimeRate = totalPayments > 0 ? Math.round((onTimePayments / totalPayments) * 100) : 0;
 
     return {
       totalPayments,
       onTimePayments,
       latePayments,
-      onTimeRate: Math.round(onTimeRate)
+      onTimeRate
     };
   };
 
-  // 獲取信用卡名稱
-  const getCardName = (cardId) => {
-    const card = creditCards.find(c => c.id === cardId);
-    return card ? card.name : '未知卡片';
-  };
+  const statistics = calculateStatistics();
 
-  // 獲取信用卡顏色
-  const getCardColor = (cardId) => {
-    const card = creditCards.find(c => c.id === cardId);
-    return card ? card.color : '#666666';
-  };
-
-  // 按月份分組歷史記錄
-  const groupHistoryByMonth = () => {
-    const filtered = paymentHistory.filter(payment => {
-      if (!payment || !payment.cardId) return false;
+  // Filter payment history based on search query
+  const filteredHistory = paymentHistory.filter(payment => {
+    if (!payment || !payment.cardId) return false;
+    
+    try {
       const cardName = String(getCardName(payment.cardId) || '').toLowerCase();
+      const cardBank = String(getCardBank(payment.cardId) || '').toLowerCase();
       const query = String(searchQuery || '').toLowerCase();
-      return cardName.includes(query);
-    });
+      
+      return cardName.includes(query) || cardBank.includes(query);
+    } catch (error) {
+      console.error('Error filtering payment history:', error);
+      return false;
+    }
+  });
 
-    const grouped = filtered.reduce((acc, payment) => {
-      const month = payment.month;
-      if (!acc[month]) {
-        acc[month] = [];
+  // Group payments by month
+  const groupedHistory = filteredHistory.reduce((acc, payment) => {
+    if (!payment || !payment.month) return acc;
+    
+    if (!acc[payment.month]) {
+      acc[payment.month] = [];
+    }
+    acc[payment.month].push(payment);
+    return acc;
+  }, {});
+
+  // Format date for display with improved due date calculation
+  const formatDate = (dateString, cardId = null, isOriginalDueDate = false) => {
+    try {
+      if (!dateString) {
+        // If this is a due date and we have card info, calculate it
+        if (isOriginalDueDate && cardId) {
+          const dueDay = getCardDueDay(cardId);
+          if (dueDay) {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth();
+            
+            // Create due date for current month
+            let dueDate = new Date(currentYear, currentMonth, parseInt(dueDay));
+            
+            // If due date has passed this month, it was for this month's cycle
+            return dueDate.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            });
+          }
+        }
+        return 'Not specified';
       }
-      acc[month].push(payment);
-      return acc;
-    }, {});
-
-    // 按月份排序（最新的在前）
-    return Object.keys(grouped)
-      .sort((a, b) => new Date(b) - new Date(a))
-      .map(month => ({
-        month,
-        payments: grouped[month].sort((a, b) => new Date(b.date) - new Date(a.date))
-      }));
+      
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date error';
+    }
   };
 
-  const stats = calculateStats();
-  const groupedHistory = groupHistoryByMonth();
-
-  // 格式化日期
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('zh-TW', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-  };
-
-  // 格式化月份
-  const formatMonth = (monthString) => {
-    const [year, month] = monthString.split('-');
-    const date = new Date(year, month - 1);
-    return date.toLocaleDateString('zh-TW', {
-      year: 'numeric',
-      month: 'long'
-    });
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchQuery('');
   };
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backIcon}>←</Text>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={onBack}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={24} color="#000000" />
         </TouchableOpacity>
+        
         <Text style={styles.title}>History</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* 統計卡片 */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.totalPayments}</Text>
-              <Text style={styles.statLabel}>總還款次數</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.onTimePayments}</Text>
-              <Text style={styles.statLabel}>準時還款</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.latePayments}</Text>
-              <Text style={styles.statLabel}>逾期還款</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={[styles.statNumber, { color: stats.onTimeRate >= 80 ? '#4CAF50' : '#FF3B30' }]}>
-                {stats.onTimeRate}%
-              </Text>
-              <Text style={styles.statLabel}>準時率</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 搜尋欄 */}
-        <View style={styles.searchContainer}>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <MaterialIcons name="search" size={20} color="#666666" />
           <TextInput
             style={styles.searchInput}
-            placeholder="搜尋信用卡..."
-            placeholderTextColor="#666666"
+            placeholder="Search transactions"
+            placeholderTextColor="#999999"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={handleClearSearch}>
+              <MaterialIcons name="clear" size={20} color="#666666" />
+            </TouchableOpacity>
+          )}
         </View>
+      </View>
 
-        {/* 歷史記錄 */}
-        <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>還款記錄</Text>
+      {/* Statistics Cards */}
+      <View style={styles.statisticsContainer}>
+        <View style={styles.statisticsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{statistics.totalPayments}</Text>
+            <Text style={styles.statLabel}>Total Payments</Text>
+          </View>
           
-          {groupedHistory.length === 0 ? (
+          <View style={styles.statCard}>
+            <Text style={[styles.statNumber, styles.onTimeNumber]}>{statistics.onTimePayments}</Text>
+            <Text style={styles.statLabel}>On-time Payments</Text>
+          </View>
+          
+          <View style={styles.statCard}>
+            <Text style={[styles.statNumber, styles.lateNumber]}>{statistics.latePayments}</Text>
+            <Text style={styles.statLabel}>Late Payments</Text>
+          </View>
+          
+          <View style={styles.statCard}>
+            <Text style={[styles.statNumber, styles.rateNumber]}>{statistics.onTimeRate}%</Text>
+            <Text style={styles.statLabel}>On-time Rate</Text>
+          </View>
+        </View>
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {Object.keys(groupedHistory).length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyTitle}>暫無還款記錄</Text>
+              <MaterialIcons name="history" size={64} color="#E0E0E0" />
+              <Text style={styles.emptyTitle}>No Payment History</Text>
               <Text style={styles.emptySubtitle}>
-                {searchQuery ? '沒有找到匹配的記錄' : '開始使用應用程式後，您的還款記錄將會顯示在這裡'}
+                {searchQuery ? 'No results found for your search' : 'Your payment history will appear here once you start making payments'}
               </Text>
             </View>
           ) : (
-            groupedHistory.map((group, index) => (
-              <View key={index} style={styles.monthSection}>
-                <Text style={styles.monthTitle}>{formatMonth(group.month)}</Text>
-                
-                {group.payments.map((payment, paymentIndex) => (
-                  <View key={paymentIndex} style={styles.paymentItem}>
-                    <View style={styles.paymentLeft}>
-                      <View style={[
-                        styles.cardIndicator, 
-                        { backgroundColor: getCardColor(payment.cardId) }
-                      ]} />
-                      <View style={styles.paymentInfo}>
-                        <Text style={styles.cardName}>{getCardName(payment.cardId)}</Text>
-                        <Text style={styles.paymentDate}>
-                          還款日期：{formatDate(payment.date)}
-                        </Text>
-                        <Text style={styles.markedDate}>
-                          標記時間：{formatDate(payment.markedDate)}
-                        </Text>
+            Object.keys(groupedHistory)
+              .sort((a, b) => new Date(b) - new Date(a))
+              .map((month) => (
+                <View key={month} style={styles.monthSection}>
+                  <Text style={styles.monthHeader}>
+                    {new Date(month + '-01').toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long'
+                    })}
+                  </Text>
+                  
+                  {groupedHistory[month].map((payment, index) => (
+                    <View key={index} style={styles.paymentItem}>
+                      <View style={styles.paymentHeader}>
+                        <View style={styles.cardInfo}>
+                          <Text style={styles.cardName}>
+                            {getCardName(payment.cardId)}
+                          </Text>
+                          <Text style={styles.bankName}>
+                            {getCardBank(payment.cardId)}
+                          </Text>
+                        </View>
+                        
+                        <View style={styles.statusContainer}>
+                          {payment.onTime ? (
+                            <View style={styles.statusBadge}>
+                              <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+                              <Text style={styles.statusText}>On Time</Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.statusBadge, styles.lateStatusBadge]}>
+                              <MaterialIcons name="warning" size={16} color="#FF9800" />
+                              <Text style={[styles.statusText, styles.lateStatusText]}>Late</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      
+                      <View style={styles.paymentDetails}>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Due Date:</Text>
+                          <Text style={styles.detailValue}>
+                            {formatDate(payment.dueDate, payment.cardId, true)}
+                          </Text>
+                        </View>
+                        
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Actual Payment Date:</Text>
+                          <Text style={styles.detailValue}>
+                            {formatDate(payment.markedDate)}
+                          </Text>
+                        </View>
                       </View>
                     </View>
-                    
-                    <View style={styles.paymentRight}>
-                      <View style={[
-                        styles.statusBadge,
-                        payment.onTime ? styles.onTimeBadge : styles.lateBadge
-                      ]}>
-                        <Text style={[
-                          styles.statusText,
-                          payment.onTime ? styles.onTimeText : styles.lateText
-                        ]}>
-                          {payment.onTime ? '準時' : '逾期'}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ))
+                  ))}
+                </View>
+              ))
           )}
         </View>
-
-        {/* 底部間距 */}
-        <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -206,182 +264,212 @@ export default function HistoryPage({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#FFFFFF', // White background like MyCards page
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 40, // Raised even higher for better positioning
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#E0E0E0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+    padding: 8,
   },
   title: {
-    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '600',
+    color: '#000000', // Black text for white background
+    textAlign: 'center',
   },
   placeholder: {
     width: 40,
   },
-  scrollView: {
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  searchInput: {
     flex: 1,
+    fontSize: 16,
+    color: '#000000',
+    marginLeft: 8,
   },
-  statsContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  statisticsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
   },
-  statsGrid: {
+  statisticsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
   statCard: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 20,
     width: '48%',
-    marginBottom: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   statNumber: {
-    color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#000000',
     marginBottom: 8,
   },
+  onTimeNumber: {
+    color: '#4CAF50',
+  },
+  lateNumber: {
+    color: '#FF5722',
+  },
+  rateNumber: {
+    color: '#2196F3',
+  },
   statLabel: {
-    color: '#999999',
     fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  statSubLabel: {
+    fontSize: 12,
+    color: '#666666',
     textAlign: 'center',
   },
-  searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+  scrollView: {
+    flex: 1,
   },
-  searchInput: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  historySection: {
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 20,
+  content: {
+    padding: 16,
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
   emptyTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
+    color: '#333333',
+    marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
-    color: '#999999',
     fontSize: 14,
+    color: '#666666',
     textAlign: 'center',
     lineHeight: 20,
+    paddingHorizontal: 32,
   },
   monthSection: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
-  monthTitle: {
-    color: '#007AFF',
+  monthHeader: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
+    color: '#000000',
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   paymentItem: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  paymentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  paymentLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  cardIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  paymentInfo: {
+  cardInfo: {
     flex: 1,
   },
   cardName: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    color: '#000000',
     marginBottom: 4,
   },
-  paymentDate: {
-    color: '#CCCCCC',
+  bankName: {
     fontSize: 14,
-    marginBottom: 2,
+    color: '#666666',
   },
-  markedDate: {
-    color: '#999999',
-    fontSize: 12,
-  },
-  paymentRight: {
-    alignItems: 'flex-end',
+  statusContainer: {
+    marginLeft: 12,
   },
   statusBadge: {
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderRadius: 20,
   },
-  onTimeBadge: {
-    backgroundColor: 'rgba(76, 175, 80, 0.2)',
-  },
-  lateBadge: {
-    backgroundColor: 'rgba(255, 59, 48, 0.2)',
+  lateStatusBadge: {
+    backgroundColor: '#FFF3E0',
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
-  },
-  onTimeText: {
+    fontWeight: '500',
     color: '#4CAF50',
+    marginLeft: 4,
   },
-  lateText: {
-    color: '#FF3B30',
+  lateStatusText: {
+    color: '#FF9800',
   },
-  bottomSpacing: {
-    height: 20,
+  paymentDetails: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    paddingTop: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666666',
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000000',
+    textAlign: 'right',
+    flex: 1,
   },
 });

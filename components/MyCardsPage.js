@@ -1,4 +1,4 @@
-// components/MyCardsPage.js - 修復版，解決所有功能問題
+// components/MyCardsPage.js - 專業UI重新設計版本
 import React, { useState } from 'react';
 import {
   View,
@@ -10,6 +10,7 @@ import {
   Switch,
   Alert
 } from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function MyCardsPage({ 
   creditCards = [], 
@@ -22,7 +23,13 @@ export default function MyCardsPage({
   onMarkPayment,
   onUpdateNotificationSettings
 }) {
-  const [expandedCard, setExpandedCard] = useState(null);
+  // 計算統計數據
+  const calculateStats = () => {
+    const total = creditCards.length;
+    const paid = creditCards.filter(card => isCardPaid(card.id)).length;
+    const unpaid = total - paid;
+    return { total, paid, unpaid };
+  };
 
   // 計算距離還款日的天數
   const calculateDaysUntilDue = (dueDay) => {
@@ -49,13 +56,29 @@ export default function MyCardsPage({
     return paymentHistory.some(payment => 
       payment.cardId === cardId && 
       payment.month === currentMonth &&
-      payment.onTime !== undefined // 確保是有效的還款記錄
+      payment.onTime !== undefined
     );
+  };
+
+  // 獲取到期日期格式化顯示
+  const formatDueDate = (dueDay) => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    let dueDate = new Date(currentYear, currentMonth, parseInt(dueDay));
+    
+    if (dueDate <= today) {
+      dueDate.setMonth(dueDate.getMonth() + 1);
+    }
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${monthNames[dueDate.getMonth()]} ${dueDate.getDate()}`;
   };
 
   // 獲取卡片的通知設定
   const getCardNotificationSetting = (cardId) => {
-    return notificationSettings[cardId]?.enabled || false;
+    return notificationSettings[cardId]?.enabled !== false;
   };
 
   // 更新卡片通知設定
@@ -69,48 +92,41 @@ export default function MyCardsPage({
     }
   };
 
-  // 標記為已還款
-  const handleMarkAsPaid = (cardId) => {
-    if (onMarkPayment) {
-      onMarkPayment(cardId);
+  // 切換還款狀態
+  const handleTogglePayment = (cardId) => {
+    const isPaid = isCardPaid(cardId);
+    
+    if (!isPaid) {
+      // 標記為已還款
+      if (onMarkPayment) {
+        onMarkPayment(cardId);
+      }
+    } else {
+      // 標記為未還款（移除還款記錄）
+      const today = new Date();
+      const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      
+      Alert.alert(
+        'Confirm Action',
+        'Mark this card as unpaid?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Confirm', 
+            onPress: () => {
+              if (onUpdateCard) {
+                onUpdateCard(cardId, { isMarkedPaid: false });
+              }
+              Alert.alert('Success', 'Card marked as unpaid');
+            }
+          }
+        ]
+      );
     }
-  };
-
-  // 標記為未還款
-  const handleMarkAsUnpaid = (cardId) => {
-    const today = new Date();
-    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    
-    // 找到並移除當月的還款記錄
-    const updatedHistory = paymentHistory.filter(payment => 
-      !(payment.cardId === cardId && payment.month === currentMonth)
-    );
-    
-    // 更新卡片狀態
-    if (onUpdateCard) {
-      onUpdateCard(cardId, { isMarkedPaid: false });
-    }
-    
-    Alert.alert('Success', 'Card marked as unpaid');
   };
 
   // 長按刪除卡片
   const handleLongPress = (card) => {
-    Alert.alert(
-      'Card Options',
-      `What would you like to do with ${card.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Card',
-          style: 'destructive',
-          onPress: () => confirmDelete(card)
-        }
-      ]
-    );
-  };
-
-  const confirmDelete = (card) => {
     Alert.alert(
       'Delete Card',
       `Are you sure you want to delete ${card.name}?`,
@@ -129,39 +145,7 @@ export default function MyCardsPage({
     );
   };
 
-  // 獲取卡片狀態
-  const getCardStatus = (card) => {
-    const daysUntil = calculateDaysUntilDue(card.dueDay);
-    const isPaid = isCardPaid(card.id);
-
-    if (isPaid) {
-      return { status: 'paid', color: '#4CAF50', text: 'Paid' };
-    } else if (daysUntil < 0) {
-      return { status: 'overdue', color: '#FF3B30', text: `${Math.abs(daysUntil)} days overdue` };
-    } else if (daysUntil === 0) {
-      return { status: 'due', color: '#FF9500', text: 'Due today' };
-    } else if (daysUntil <= 3) {
-      return { status: 'urgent', color: '#FF9500', text: `${daysUntil} days left` };
-    } else {
-      return { status: 'normal', color: '#007AFF', text: `${daysUntil} days left` };
-    }
-  };
-
-  // 排序卡片（按緊急程度）
-  const sortedCards = [...creditCards].sort((a, b) => {
-    const aStatus = getCardStatus(a);
-    const bStatus = getCardStatus(b);
-    
-    const statusPriority = {
-      'overdue': 1,
-      'due': 2,
-      'urgent': 3,
-      'normal': 4,
-      'paid': 5
-    };
-    
-    return statusPriority[aStatus.status] - statusPriority[bStatus.status];
-  });
+  const stats = calculateStats();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -170,106 +154,105 @@ export default function MyCardsPage({
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={onBack}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <Text style={styles.backIcon}>←</Text>
+          <Ionicons name="chevron-back" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.title}>My Cards</Text>
+        
+        <View style={styles.titleSection}>
+          <Text style={styles.title}>My Cards</Text>
+          <Text style={styles.subtitle}>
+            Total: {stats.total} | Paid: {stats.paid} | Unpaid: {stats.unpaid}
+          </Text>
+        </View>
+        
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => onNavigate('AddCard')}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <Text style={styles.addIcon}>+</Text>
+          <MaterialIcons name="add" size={24} color="#000000" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Cards List */}
-        <View style={styles.cardsSection}>
-          {sortedCards.length === 0 ? (
+        <View style={styles.cardsContainer}>
+          {creditCards.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💳</Text>
+              <MaterialIcons name="credit-card" size={64} color="#E0E0E0" />
               <Text style={styles.emptyTitle}>No Credit Cards</Text>
               <Text style={styles.emptySubtitle}>
-                Add your first credit card to get started with payment reminders
+                Add your first credit card to get started
               </Text>
               <TouchableOpacity 
                 style={styles.emptyButton}
                 onPress={() => onNavigate('AddCard')}
+                activeOpacity={0.7}
               >
-                <Text style={styles.emptyButtonText}>Add Your First Card</Text>
+                <Text style={styles.emptyButtonText}>Add Card</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            sortedCards.map((card, index) => {
-              const cardStatus = getCardStatus(card);
-              const isPaid = cardStatus.status === 'paid';
+            creditCards.map((card, index) => {
+              const isPaid = isCardPaid(card.id);
+              const daysLeft = calculateDaysUntilDue(card.dueDay);
               const notificationEnabled = getCardNotificationSetting(card.id);
+              const dueDate = formatDueDate(card.dueDay);
 
               return (
                 <TouchableOpacity
                   key={index}
-                  style={[
-                    styles.cardContainer,
-                    { borderLeftColor: card.color || '#666666' }
-                  ]}
+                  style={styles.cardItem}
                   onLongPress={() => handleLongPress(card)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.95}
                 >
                   <View style={styles.cardContent}>
-                    {/* Card Header */}
-                    <View style={styles.cardHeader}>
-                      <View style={styles.cardInfo}>
-                        <Text style={styles.cardName}>{card.name}</Text>
-                        <Text style={styles.cardBank}>{card.bank}</Text>
-                        <Text style={styles.cardDueDate}>Due: {card.dueDay}th of each month</Text>
-                      </View>
-                      
-                      {/* Notification Toggle */}
-                      <View style={styles.notificationToggle}>
+                    {/* 左側信息 */}
+                    <View style={styles.cardLeft}>
+                      {/* 通知開關 */}
+                      <View style={styles.notificationSection}>
+                        <Text style={styles.notificationLabel}>Notifications</Text>
                         <Switch
                           value={notificationEnabled}
                           onValueChange={(enabled) => handleToggleNotification(card.id, enabled)}
-                          trackColor={{ false: '#333333', true: '#007AFF' }}
-                          thumbColor={notificationEnabled ? '#FFFFFF' : '#666666'}
+                          trackColor={{ false: '#E0E0E0', true: '#4CAF50' }}
+                          thumbColor={notificationEnabled ? '#FFFFFF' : '#F5F5F5'}
                           style={styles.switch}
                         />
                       </View>
-                    </View>
-
-                    {/* Card Status */}
-                    <View style={styles.cardStatus}>
-                      <View style={[
-                        styles.statusBadge,
-                        { backgroundColor: cardStatus.color + '20' }
+                      
+                      {/* 卡片信息 */}
+                      <Text style={styles.cardName}>{card.name}</Text>
+                      <Text style={styles.bankName}>{card.bank}</Text>
+                      <Text style={styles.dueDate}>Due: {dueDate}</Text>
+                      <Text style={[
+                        styles.daysLeft,
+                        daysLeft <= 3 && styles.daysLeftUrgent,
+                        daysLeft <= 0 && styles.daysLeftOverdue
                       ]}>
-                        <Text style={[
-                          styles.statusText,
-                          { color: cardStatus.color }
-                        ]}>
-                          {cardStatus.text}
-                        </Text>
-                      </View>
+                        {daysLeft > 0 ? `${daysLeft} days left` : 
+                         daysLeft === 0 ? 'Due today' : 
+                         `${Math.abs(daysLeft)} days overdue`}
+                      </Text>
                     </View>
 
-                    {/* Card Actions */}
-                    <View style={styles.cardActions}>
-                      {isPaid ? (
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.unpaidButton]}
-                          onPress={() => handleMarkAsUnpaid(card.id)}
-                        >
-                          <Text style={styles.unpaidButtonText}>Mark as Unpaid</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.paidButton]}
-                          onPress={() => handleMarkAsPaid(card.id)}
-                        >
-                          <Text style={styles.paidButtonText}>Mark as Paid</Text>
-                        </TouchableOpacity>
-                      )}
+                    {/* 右側按鈕 */}
+                    <View style={styles.cardRight}>
+                      <TouchableOpacity
+                        style={[
+                          styles.paymentButton,
+                          isPaid && styles.paidButton
+                        ]}
+                        onPress={() => handleTogglePayment(card.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.paymentButtonText,
+                          isPaid && styles.paidButtonText
+                        ]}>
+                          {isPaid ? 'Paid' : 'Unpaid'}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -277,9 +260,6 @@ export default function MyCardsPage({
             })
           )}
         </View>
-
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -288,170 +268,155 @@ export default function MyCardsPage({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60, // 調整位置避免動態島遮擋
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#E0E0E0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
+    marginRight: 8,
   },
-  backIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+  titleSection: {
+    flex: 1,
   },
   title: {
-    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '600',
+    color: '#000000',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addIcon: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
+    padding: 8,
+    marginLeft: 8,
   },
   scrollView: {
     flex: 1,
   },
-  cardsSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  cardsContainer: {
+    padding: 16,
   },
-  cardContainer: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    overflow: 'hidden',
+  cardItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cardContent: {
-    padding: 20,
-  },
-  cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    padding: 16,
   },
-  cardInfo: {
+  cardLeft: {
     flex: 1,
   },
-  cardName: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  notificationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  cardBank: {
-    color: '#CCCCCC',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  cardDueDate: {
-    color: '#999999',
-    fontSize: 12,
-  },
-  notificationToggle: {
-    alignItems: 'flex-end',
+  notificationLabel: {
+    fontSize: 10,
+    color: '#666666',
+    marginRight: 8,
   },
   switch: {
     transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
   },
-  cardStatus: {
-    marginBottom: 16,
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
+  cardName: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
   },
-  cardActions: {
-    flexDirection: 'row',
+  bankName: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 8,
+  },
+  dueDate: {
+    fontSize: 14,
+    color: '#333333',
+    marginBottom: 4,
+  },
+  daysLeft: {
+    fontSize: 14,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  daysLeftUrgent: {
+    color: '#FF9800',
+  },
+  daysLeftOverdue: {
+    color: '#F44336',
+  },
+  cardRight: {
     justifyContent: 'flex-end',
   },
-  actionButton: {
-    paddingHorizontal: 16,
+  paymentButton: {
+    paddingHorizontal: 20,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   paidButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#4CAF50',
   },
-  unpaidButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#666666',
+  paymentButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666666',
   },
   paidButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  unpaidButtonText: {
-    color: '#999999',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#4CAF50',
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 20,
-  },
   emptyTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333333',
+    marginTop: 16,
+    marginBottom: 8,
   },
   emptySubtitle: {
-    color: '#999999',
-    fontSize: 16,
+    fontSize: 14,
+    color: '#666666',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
+    backgroundColor: '#000000',
+    paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 24,
   },
   emptyButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  bottomSpacing: {
-    height: 20,
+    fontWeight: '500',
   },
 });

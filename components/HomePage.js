@@ -1,4 +1,4 @@
-// components/HomePage.js - 修復版，添加所有缺失的功能
+// components/HomePage.js - 完全重新設計版本，符合附圖要求
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,50 +8,65 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
-  Modal
+  Modal,
+  StatusBar,
+  Dimensions
 } from 'react-native';
-import { format } from 'date-fns';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import StatsDropdown from './StatsDropdown';
 
+const { width } = Dimensions.get('window');
+
 export default function HomePage({ 
+  userData = { name: 'User' }, 
   creditCards = [], 
   paymentHistory = [],
-  userData = {},
-  onNavigate,
-  onUpdateUserData
+  onNavigate 
 }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+
   const [selectedDate, setSelectedDate] = useState(null);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
 
-  // 計算今日需要還款的卡片
-  const getTodayPayments = () => {
-    const today = new Date().getDate();
-    return creditCards.filter(card => {
-      const isPaid = isCardPaidThisMonth(card.id);
-      return parseInt(card.dueDay) === today && !isPaid;
+  // 取得最近到期的信用卡（包含逾期檢查）
+  const getNextDueCard = () => {
+    if (!creditCards || creditCards.length === 0) return null;
+    
+    // 過濾掉已還款的卡片
+    const unpaidCards = creditCards.filter(card => !isCardPaid(card.id));
+    if (unpaidCards.length === 0) return null;
+    
+    // 計算每張卡片的還款狀態
+    const cardsWithStatus = unpaidCards.map(card => {
+      const status = calculatePaymentStatus(card.dueDay);
+      return { ...card, paymentStatus: status };
     });
+    
+    // 優先顯示邏輯：逾期 > 今日到期 > 即將到期
+    const overdueCards = cardsWithStatus.filter(card => card.paymentStatus.type === 'overdue');
+    const todayCards = cardsWithStatus.filter(card => card.paymentStatus.type === 'due_today');
+    const upcomingCards = cardsWithStatus.filter(card => card.paymentStatus.type === 'upcoming');
+    
+    if (overdueCards.length > 0) {
+      // 如果有逾期的，選擇逾期最久的
+      return overdueCards.reduce((latest, current) => 
+        current.paymentStatus.days > latest.paymentStatus.days ? current : latest
+      );
+    } else if (todayCards.length > 0) {
+      // 如果有今天到期的，隨便選一張
+      return todayCards[0];
+    } else if (upcomingCards.length > 0) {
+      // 選擇最近即將到期的
+      return upcomingCards.reduce((nearest, current) => 
+        current.paymentStatus.days < nearest.paymentStatus.days ? current : nearest
+      );
+    }
+    
+    return null;
   };
 
-  // 獲取特定日期的還款卡片
-  const getPaymentsForDate = (date) => {
-    return creditCards.filter(card => {
-      const isPaid = isCardPaidThisMonth(card.id);
-      return parseInt(card.dueDay) === date && !isPaid;
-    });
-  };
-
-  // 檢查某日期是否有還款
-  const hasPaymentOnDate = (date) => {
-    return creditCards.some(card => {
-      const isPaid = isCardPaidThisMonth(card.id);
-      return parseInt(card.dueDay) === date && !isPaid;
-    });
-  };
-
-  // 檢查卡片本月是否已還款
-  const isCardPaidThisMonth = (cardId) => {
+  // 檢查卡片是否已還款
+  const isCardPaid = (cardId) => {
     const today = new Date();
     const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     
@@ -62,257 +77,317 @@ export default function HomePage({
     );
   };
 
-  // 處理日期點擊
-  const handleDatePress = (date) => {
-    const payments = getPaymentsForDate(date);
-    setSelectedDate({ date, payments });
-    setShowDateModal(true);
-  };
-
   // 生成日曆
   const generateCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay();
-
-    const weeks = [];
-    let currentWeek = [];
-
-    // 添加空白天數（月初）
-    for (let i = 0; i < startingDay; i++) {
-      currentWeek.push(null);
-    }
-
-    // 添加月份天數
-    for (let day = 1; day <= daysInMonth; day++) {
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek);
-        currentWeek = [];
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const calendar = [];
+    const current = new Date(startDate);
+    
+    for (let week = 0; week < 6; week++) {
+      const weekDays = [];
+      for (let day = 0; day < 7; day++) {
+        const isCurrentMonth = current.getMonth() === month;
+        const isToday = current.toDateString() === today.toDateString();
+        
+        // 檢查這一天是否有還款
+        const dayPayments = creditCards.filter(card => {
+          if (!isCurrentMonth) return false;
+          const isPaid = isCardPaid(card.id);
+          return parseInt(card.dueDay) === current.getDate() && !isPaid;
+        });
+        
+        weekDays.push({
+          date: new Date(current),
+          day: current.getDate(),
+          isCurrentMonth,
+          isToday,
+          hasPayment: dayPayments.length > 0,
+          payments: dayPayments
+        });
+        
+        current.setDate(current.getDate() + 1);
       }
-
-      const isToday = day === new Date().getDate() && 
-                     month === new Date().getMonth() && 
-                     year === new Date().getFullYear();
-      const hasPayment = hasPaymentOnDate(day);
-      const paymentCount = getPaymentsForDate(day).length;
-
-      currentWeek.push({
-        day,
-        isToday,
-        hasPayment,
-        paymentCount
-      });
+      calendar.push(weekDays);
     }
-
-    // 完成最後一周
-    if (currentWeek.length > 0) {
-      weeks.push(currentWeek);
-    }
-
-    return weeks;
+    
+    return calendar;
   };
 
-  const todayPayments = getTodayPayments();
-  const weeks = generateCalendar();
+  // 處理日期點擊
+  const handleDatePress = (dateInfo) => {
+    if (dateInfo.hasPayment && dateInfo.payments.length > 0) {
+      setSelectedDate(dateInfo);
+      setShowDateModal(true);
+    }
+  };
+
+  // 計算還款狀態和天數 - 包含逾期檢查
+  const calculatePaymentStatus = (dueDay) => {
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    // 建立這個月的還款日期
+    const thisDueDate = new Date(currentYear, currentMonth, parseInt(dueDay));
+    
+    // 計算時間差（以毫秒為單位）
+    const timeDiff = thisDueDate - today;
+    const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff > 0) {
+      // 未來：還有時間
+      return {
+        type: 'upcoming',
+        days: daysDiff,
+        text: `${daysDiff} days left`
+      };
+    } else if (daysDiff === 0) {
+      // 今天：到期日
+      return {
+        type: 'due_today',
+        days: 0,
+        text: 'Due today'
+      };
+    } else {
+      // 過去：已逾期
+      return {
+        type: 'overdue',
+        days: Math.abs(daysDiff),
+        text: `Overdue ${Math.abs(daysDiff)} days`
+      };
+    }
+  };
+
+  // 格式化月份年份
+  const formatMonthYear = () => {
+    const today = new Date();
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+    return `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+  };
+
+  const nextDueCard = getNextDueCard();
+  const calendar = generateCalendar();
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.menuButton}
-            onPress={() => onNavigate('MyCards')}
-          >
-            <Text style={styles.menuIcon}>☰</Text>
-          </TouchableOpacity>
-          
-          <Text style={styles.title}>CardReminder</Text>
-          
-          <TouchableOpacity 
-            style={styles.profileButton}
-            onPress={() => onNavigate('Profile')}
-          >
-            <Text style={styles.profileIcon}>👤</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Welcome Message */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>
-            Welcome back, {userData.name || 'User'}!
-          </Text>
-          <Text style={styles.subtitleText}>
-            You have {creditCards.length} cards to manage
-          </Text>
-        </View>
-
-        {/* Today's Payments */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Payments</Text>
-          <View style={styles.todayCard}>
-            {todayPayments.length > 0 ? (
-              <View>
-                <Text style={styles.paymentIcon}>⚠️</Text>
-                <Text style={styles.paymentText}>
-                  {todayPayments.length} payment{todayPayments.length > 1 ? 's' : ''} due today
-                </Text>
-                <Text style={styles.paymentSubtext}>
-                  {todayPayments.map(card => card.name).join(', ')}
-                </Text>
-              </View>
-            ) : (
-              <View>
-                <Text style={styles.checkIcon}>✓</Text>
-                <Text style={styles.noDueText}>No payments due today</Text>
-                <Text style={styles.allCaughtText}>You're all caught up!</Text>
-              </View>
-            )}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {/* 頭部區域 */}
+      <View style={styles.header}>
+        {/* 左上角頭像按鈕 */}
+        <TouchableOpacity 
+          style={styles.avatarButton}
+          onPress={() => onNavigate && onNavigate('Profile')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.avatarContainer}>
+            <MaterialIcons name="person" size={24} color="#007AFF" />
           </View>
+        </TouchableOpacity>
+        
+        {/* 歡迎文字 */}
+        <Text style={styles.welcomeText}>Welcome back, {userData.name}!</Text>
+        
+        {/* 右邊佔位符 */}
+        <View style={styles.headerPlaceholder} />
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* 下一個到期付款卡片 */}
+        <View style={styles.upcomingPaymentCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Next Upcoming Due Payment</Text>
+            <Text style={styles.monthYear}>{formatMonthYear()}</Text>
+          </View>
+          
+          {nextDueCard ? (
+            <View style={styles.paymentContent}>
+              <View style={[
+                styles.countdownBadge,
+                nextDueCard.paymentStatus.type === 'overdue' && styles.overdueBadge,
+                nextDueCard.paymentStatus.type === 'due_today' && styles.todayBadge
+              ]}>
+                <Text style={styles.countdownText}>
+                  {nextDueCard.paymentStatus.text}
+                </Text>
+              </View>
+              
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName}>{nextDueCard.name}</Text>
+                <Text style={styles.bankName}>{nextDueCard.bank}</Text>
+              </View>
+              
+              <View style={[
+                styles.dueSoonBadge,
+                nextDueCard.paymentStatus.type === 'overdue' && styles.overdueWarning,
+                nextDueCard.paymentStatus.type === 'due_today' && styles.todayWarning
+              ]}>
+                <Text style={[
+                  styles.dueSoonText,
+                  nextDueCard.paymentStatus.type === 'overdue' && styles.overdueWarningText,
+                  nextDueCard.paymentStatus.type === 'due_today' && styles.todayWarningText
+                ]}>
+                  {nextDueCard.paymentStatus.type === 'overdue' ? 'Payment Overdue' :
+                   nextDueCard.paymentStatus.type === 'due_today' ? 'Payment Due Today' :
+                   'Payment Due Soon'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.noPaymentContent}>
+              <MaterialIcons name="check-circle" size={48} color="#4CAF50" />
+              <Text style={styles.noPaymentText}>No upcoming payments</Text>
+            </View>
+          )}
         </View>
 
-        {/* Payment Calendar */}
-        <View style={styles.section}>
+        {/* 付款日曆 */}
+        <View style={styles.calendarSection}>
           <View style={styles.calendarHeader}>
             <Text style={styles.sectionTitle}>Payment Calendar</Text>
-            <Text style={styles.monthYear}>
-              {format(currentDate, 'MMM yyyy')}
-            </Text>
+            <Text style={styles.currentMonth}>{formatMonthYear()}</Text>
           </View>
-
+          
           <View style={styles.calendar}>
-            {/* Week days header */}
+            {/* 星期標題 */}
             <View style={styles.weekHeader}>
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                <Text key={index} style={styles.weekDay}>{day}</Text>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                <View key={index} style={styles.weekDayHeader}>
+                  <Text style={styles.weekDayText}>{day}</Text>
+                </View>
               ))}
             </View>
-
-            {/* Calendar weeks */}
-            {weeks.map((week, weekIndex) => (
-              <View key={weekIndex} style={styles.week}>
-                {week.map((dayObj, dayIndex) => (
+            
+            {/* 日期格子 */}
+            {calendar.map((week, weekIndex) => (
+              <View key={weekIndex} style={styles.weekRow}>
+                {week.map((dateInfo, dayIndex) => (
                   <TouchableOpacity
                     key={dayIndex}
                     style={[
-                      styles.day,
-                      dayObj?.isToday && styles.today,
-                      dayObj?.hasPayment && styles.paymentDay
+                      styles.dateCell,
+                      !dateInfo.isCurrentMonth && styles.dateCellInactive,
+                      dateInfo.isToday && styles.dateCellToday,
+                      dateInfo.hasPayment && styles.dateCellWithPayment
                     ]}
-                    onPress={() => dayObj && handleDatePress(dayObj.day)}
-                    disabled={!dayObj}
+                    onPress={() => handleDatePress(dateInfo)}
+                    activeOpacity={dateInfo.hasPayment ? 0.7 : 1}
                   >
-                    {dayObj && (
-                      <>
-                        <Text style={[
-                          styles.dayText,
-                          dayObj.isToday && styles.todayText,
-                          dayObj.hasPayment && styles.paymentDayText
-                        ]}>
-                          {dayObj.day}
-                        </Text>
-                        {dayObj.hasPayment && (
-                          <View style={styles.paymentIndicator}>
-                            <Text style={styles.paymentCount}>{dayObj.paymentCount}</Text>
-                          </View>
-                        )}
-                      </>
+                    <Text style={[
+                      styles.dateText,
+                      !dateInfo.isCurrentMonth && styles.dateTextInactive,
+                      dateInfo.isToday && styles.dateTextToday,
+                      dateInfo.hasPayment && styles.dateTextWithPayment
+                    ]}>
+                      {dateInfo.day}
+                    </Text>
+                    {dateInfo.hasPayment && (
+                      <View style={styles.paymentDot}>
+                        <Text style={styles.paymentCount}>{dateInfo.payments.length}</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 ))}
               </View>
             ))}
           </View>
-
-          {/* Calendar Legend */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={styles.legendDot} />
-              <Text style={styles.legendText}>Payment due</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, styles.todayLegend]} />
-              <Text style={styles.legendText}>Today</Text>
-            </View>
-          </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      {/* 底部導航欄 */}
+      <View style={styles.bottomNavigation}>
         <TouchableOpacity 
           style={styles.navButton}
-          onPress={() => onNavigate('Notifications')}
+          onPress={() => onNavigate && onNavigate('Home')}
+          activeOpacity={0.7}
         >
-          <Text style={styles.navIcon}>🔔</Text>
+          <MaterialIcons name="home" size={24} color="#007AFF" />
+          <Text style={[styles.navText, styles.navTextActive]}>Home</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => onNavigate('MyCards')}
+          style={styles.navButton}
+          onPress={() => onNavigate && onNavigate('MyCards')}
+          activeOpacity={0.7}
         >
-          <Text style={styles.addIcon}>☰</Text>
+          <MaterialIcons name="credit-card" size={24} color="#999999" />
+          <Text style={styles.navText}>Cards</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.navButton}
           onPress={() => setShowStatsDropdown(true)}
+          activeOpacity={0.7}
         >
-          <Text style={styles.navIcon}>📊</Text>
+          <MaterialIcons name="bar-chart" size={24} color="#999999" />
+          <Text style={styles.navText}>Stats</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Date Details Modal */}
+      {/* 日期詳情彈窗 */}
       <Modal
         visible={showDateModal}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowDateModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedDate?.date} {format(currentDate, 'MMM yyyy')}
-            </Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {selectedDate?.date.toLocaleDateString('en-US', { 
+                  month: 'long', 
+                  day: 'numeric' 
+                })} Payments
+              </Text>
+              <TouchableOpacity 
+                onPress={() => setShowDateModal(false)}
+                style={styles.closeButton}
+              >
+                <MaterialIcons name="close" size={24} color="#666666" />
+              </TouchableOpacity>
+            </View>
             
-            {selectedDate?.payments.length > 0 ? (
-              <View>
-                <Text style={styles.modalSubtitle}>
-                  {selectedDate.payments.length} Payment{selectedDate.payments.length > 1 ? 's' : ''} Due
-                </Text>
-                {selectedDate.payments.map((card, index) => (
-                  <View key={index} style={styles.paymentItem}>
-                    <View style={[styles.cardColorIndicator, { backgroundColor: card.color }]} />
-                    <View style={styles.cardInfo}>
-                      <Text style={styles.cardName}>{card.name}</Text>
-                      <Text style={styles.cardBank}>{card.bank}</Text>
-                    </View>
+            {selectedDate?.payments.map((payment, index) => {
+              const status = calculatePaymentStatus(payment.dueDay);
+              return (
+                <View key={index} style={styles.paymentItem}>
+                  <View style={styles.paymentInfo}>
+                    <Text style={styles.paymentCardName}>{payment.name}</Text>
+                    <Text style={styles.paymentBankName}>{payment.bank}</Text>
                   </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.noPaymentsText}>No payments due on this date</Text>
-            )}
-            
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowDateModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
+                  <View style={styles.countdownInfo}>
+                    <Text style={[
+                      styles.countdownLabel,
+                      status.type === 'overdue' && styles.overdueLabel,
+                      status.type === 'due_today' && styles.todayLabel
+                    ]}>
+                      {status.text}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </View>
       </Modal>
 
-      {/* Stats Dropdown */}
+      {/* Stats 下拉選單 */}
       <StatsDropdown
         visible={showStatsDropdown}
         onClose={() => setShowStatsDropdown(false)}
-        onNavigateToHistory={() => onNavigate('History')}
-        onNavigateToAchievements={() => onNavigate('Achievements')}
+        onNavigateToHistory={() => onNavigate && onNavigate('History')}
+        onNavigateToAchievements={() => onNavigate && onNavigate('Achievements')}
       />
     </SafeAreaView>
   );
@@ -321,315 +396,339 @@ export default function HomePage({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: '#FFFFFF', // 白色背景
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingTop: 20, // 往上移動
+    paddingBottom: 15,
+    backgroundColor: '#FFFFFF',
   },
-  menuButton: {
+  avatarButton: {
+    marginRight: 15,
+  },
+  avatarContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#F0F8FF',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  menuIcon: {
-    color: '#FFFFFF',
-    fontSize: 18,
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileIcon: {
-    color: '#FFFFFF',
-    fontSize: 18,
-  },
-  welcomeSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF',
   },
   welcomeText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
   },
-  subtitleText: {
-    color: '#999999',
-    fontSize: 16,
+  headerPlaceholder: {
+    width: 40,
   },
-  section: {
+  scrollView: {
+    flex: 1,
     paddingHorizontal: 20,
-    marginBottom: 30,
   },
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  todayCard: {
-    backgroundColor: '#2a2a2a',
+  upcomingPaymentCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 32,
+    padding: 20,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 15,
   },
-  paymentIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  checkIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-    color: '#4CAF50',
-  },
-  paymentText: {
-    color: '#FF3B30',
-    fontSize: 18,
+  cardTitle: {
+    fontSize: 16,
     fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 8,
+    color: '#333333',
   },
-  paymentSubtext: {
-    color: '#999999',
+  monthYear: {
     fontSize: 14,
-    textAlign: 'center',
+    color: '#666666',
   },
-  noDueText: {
+  paymentContent: {
+    position: 'relative',
+  },
+  countdownBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#FF5722', // 默認橙色，表示即將到期
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    zIndex: 1,
+  },
+  overdueBadge: {
+    backgroundColor: '#D32F2F', // 紅色，表示已逾期
+  },
+  todayBadge: {
+    backgroundColor: '#FF9800', // 深橙色，表示今日到期
+  },
+  countdownText: {
     color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cardInfo: {
+    marginTop: 25,
+    marginBottom: 15,
+  },
+  cardName: {
     fontSize: 18,
     fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 8,
+    color: '#333333',
+    marginBottom: 4,
   },
-  allCaughtText: {
-    color: '#4CAF50',
+  bankName: {
     fontSize: 14,
-    textAlign: 'center',
+    color: '#666666',
+  },
+  dueSoonBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF3E0', // 默認淺橙色背景，表示即將到期
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  overdueWarning: {
+    backgroundColor: '#FFEBEE', // 淺紅色背景，表示已逾期
+  },
+  todayWarning: {
+    backgroundColor: '#FFF8E1', // 淺黃色背景，表示今日到期
+  },
+  dueSoonText: {
+    color: '#FF9800', // 默認橙色文字
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  overdueWarningText: {
+    color: '#D32F2F', // 紅色文字，表示逾期警告
+  },
+  todayWarningText: {
+    color: '#F57C00', // 深橙色文字，表示今日到期
+  },
+  noPaymentContent: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noPaymentText: {
+    fontSize: 16,
+    color: '#666666',
+    marginTop: 10,
+  },
+  calendarSection: {
+    marginBottom: 100, // 為底部導航留空間
   },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 15,
   },
-  monthYear: {
-    color: '#999999',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  currentMonth: {
     fontSize: 16,
+    fontWeight: '500',
+    color: '#007AFF',
   },
   calendar: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   weekHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  weekDay: {
-    color: '#999999',
-    fontSize: 14,
+  weekDayHeader: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  weekDayText: {
+    fontSize: 12,
     fontWeight: '600',
-    width: 32,
-    textAlign: 'center',
+    color: '#666666',
   },
-  week: {
+  weekRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
   },
-  day: {
-    width: 32,
-    height: 32,
+  dateCell: {
+    flex: 1,
+    aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
     position: 'relative',
+    margin: 1,
+    borderRadius: 8,
   },
-  today: {
-    backgroundColor: '#4CAF50',
+  dateCellInactive: {
+    opacity: 0.3,
   },
-  paymentDay: {
-    backgroundColor: '#FF3B30',
+  dateCellToday: {
+    backgroundColor: '#E3F2FD',
   },
-  dayText: {
-    color: '#FFFFFF',
+  dateCellWithPayment: {
+    backgroundColor: '#FFEBEE',
+  },
+  dateText: {
     fontSize: 14,
-    fontWeight: '500',
+    color: '#333333',
   },
-  todayText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  dateTextInactive: {
+    color: '#CCCCCC',
   },
-  paymentDayText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  dateTextToday: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
-  paymentIndicator: {
+  dateTextWithPayment: {
+    color: '#D32F2F',
+    fontWeight: '600',
+  },
+  paymentDot: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FF3B30',
+    top: 2,
+    right: 2,
+    backgroundColor: '#F44336',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   paymentCount: {
     color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '600',
   },
-  legend: {
+  bottomNavigation: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 16,
-    gap: 24,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FF3B30',
-  },
-  todayLegend: {
-    backgroundColor: '#4CAF50',
-  },
-  legendText: {
-    color: '#999999',
-    fontSize: 12,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 20,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: '#1a1a1a',
     borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
+    borderTopColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   navButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
+    flex: 1,
     alignItems: 'center',
+    paddingVertical: 8,
   },
-  addButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  navText: {
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 4,
   },
-  navIcon: {
-    fontSize: 24,
-  },
-  addIcon: {
-    fontSize: 32,
-    color: '#1a1a1a',
-    fontWeight: 'bold',
+  navTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 20,
-    padding: 24,
-    marginHorizontal: 20,
-    maxWidth: 350,
-    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    maxWidth: width - 40,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   modalTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalSubtitle: {
-    color: '#FF3B30',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 16,
+    color: '#333333',
+  },
+  closeButton: {
+    padding: 4,
   },
   paymentItem: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  cardColorIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  cardInfo: {
+  paymentInfo: {
     flex: 1,
   },
-  cardName: {
-    color: '#FFFFFF',
+  paymentCardName: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#333333',
   },
-  cardBank: {
-    color: '#999999',
+  paymentBankName: {
     fontSize: 14,
+    color: '#666666',
+    marginTop: 2,
   },
-  noPaymentsText: {
-    color: '#999999',
-    fontSize: 16,
-    textAlign: 'center',
-    marginVertical: 20,
+  countdownInfo: {
+    alignItems: 'flex-end',
   },
-  modalCloseButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 16,
-  },
-  modalCloseText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  countdownLabel: {
+    fontSize: 12,
+    color: '#FF5722', // 默認橙色，表示即將到期
     fontWeight: '600',
-    textAlign: 'center',
+  },
+  overdueLabel: {
+    color: '#D32F2F', // 紅色，表示已逾期
+  },
+  todayLabel: {
+    color: '#F57C00', // 深橙色，表示今日到期
   },
 });

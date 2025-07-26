@@ -1,4 +1,4 @@
-// App.js - 修復版，完整的導航和功能管理
+// App.js - 完全修復版，語法正確，包含完整的登入系統
 import React, { useState, useEffect } from 'react';
 import { StatusBar, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 導入所有頁面組件
 import WelcomePage from './components/WelcomePage';
 import LoginPage from './components/LoginPage';
+import SignUpPage from './components/SignUpPage'; // ✅ 正確的導入位置
 import HomePage from './components/HomePage';
 import ProfilePage from './components/ProfilePage';
 import MyCardsPage from './components/MyCardsPage';
@@ -15,6 +16,7 @@ import HistoryPage from './components/HistoryPage';
 import AchievementsPage from './components/AchievementsPage';
 
 export default function App() {
+  // 應用程式狀態管理
   const [currentPage, setCurrentPage] = useState('Welcome');
   const [userData, setUserData] = useState({
     name: '',
@@ -39,6 +41,7 @@ export default function App() {
     saveStoredData();
   }, [userData, creditCards, paymentHistory, notificationSettings, achievements]);
 
+  // 從本地存儲載入數據
   const loadStoredData = async () => {
     try {
       const [
@@ -84,6 +87,7 @@ export default function App() {
     }
   };
 
+  // 儲存數據到本地存儲
   const saveStoredData = async () => {
     try {
       await Promise.all([
@@ -103,12 +107,60 @@ export default function App() {
     setCurrentPage(pageName);
   };
 
+  // 用戶登入處理
+  const handleLogin = (userInfo) => {
+    const newUserData = {
+      ...userData,
+      ...userInfo,
+      isLoggedIn: true
+    };
+    setUserData(newUserData);
+    handleNavigate('Home');
+    Alert.alert('歡迎', `歡迎回來，${userInfo.name || userInfo.email}！`);
+  };
+
   // 用戶數據更新
   const handleUpdateUserData = (newUserData) => {
     setUserData(newUserData);
   };
 
-  // 信用卡管理
+  // 用戶登出處理
+  const handleLogout = async () => {
+    try {
+      Alert.alert(
+        '確認登出',
+        '您確定要登出嗎？',
+        [
+          {
+            text: '取消',
+            style: 'cancel'
+          },
+          {
+            text: '確定',
+            onPress: async () => {
+              // 更新用戶狀態為未登入
+              const loggedOutUserData = {
+                ...userData,
+                isLoggedIn: false
+              };
+              
+              setUserData(loggedOutUserData);
+              
+              // 導航回歡迎頁面
+              setCurrentPage('Welcome');
+              
+              Alert.alert('成功', '您已成功登出');
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('登出過程中發生錯誤:', error);
+      Alert.alert('錯誤', '登出失敗，請重試');
+    }
+  };
+
+  // 信用卡管理函數
   const handleAddCard = (newCard) => {
     const cardWithId = {
       ...newCard,
@@ -144,7 +196,7 @@ export default function App() {
     setPaymentHistory(prev => prev.filter(payment => payment.cardId !== cardId));
   };
 
-  // 還款標記
+  // 還款標記處理
   const handleMarkPayment = (cardId) => {
     const card = creditCards.find(c => c.id === cardId);
     if (!card) return;
@@ -169,9 +221,7 @@ export default function App() {
     // 觸發成就檢查
     checkAchievementsForPayment([...paymentHistory, payment]);
 
-    Alert.alert('成功', '還款已標記！', [
-      { text: '確定', onPress: () => {} }
-    ]);
+    Alert.alert('成功', '還款已標記！');
   };
 
   // 通知設定管理
@@ -182,22 +232,22 @@ export default function App() {
     }));
   };
 
-  // 成就檢查
+  // 成就檢查函數
   const checkAchievementsForNewCard = (cards) => {
     // 這裡可以觸發特定的成就檢查邏輯
-    // 例如：第一張卡片、卡片收集家等
+    console.log('檢查新卡片成就:', cards.length);
   };
 
   const checkAchievementsForPayment = (payments) => {
     // 這裡可以觸發還款相關的成就檢查
-    // 例如：首次還款、連續還款等
+    console.log('檢查還款成就:', payments.length);
   };
 
   const handleUpdateAchievements = (newAchievements) => {
     setAchievements(newAchievements);
   };
 
-  // 根據當前頁面渲染對應組件
+  // 根據當前頁面渲染對應組件 - ✅ 這裡是正確的 switch 語句位置
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'Welcome':
@@ -210,17 +260,18 @@ export default function App() {
       case 'Login':
         return (
           <LoginPage 
-            onLogin={(method, userInfo) => {
-              const newUserData = {
-                ...userData,
-                ...userInfo,
-                loginMethod: method,
-                isLoggedIn: true
-              };
-              setUserData(newUserData);
-              handleNavigate('Home');
-            }}
+            onLogin={handleLogin}
             onBack={() => handleNavigate('Welcome')}
+            onNavigateToSignUp={() => handleNavigate('SignUp')} // ✅ 正確的註冊頁面導航
+          />
+        );
+
+      case 'SignUp': // ✅ 新增的註冊頁面 case
+        return (
+          <SignUpPage 
+            onSignUp={handleLogin} // 使用相同的登入處理函數
+            onBack={() => handleNavigate('Login')}
+            onNavigateToLogin={() => handleNavigate('Login')}
           />
         );
 
@@ -242,6 +293,7 @@ export default function App() {
             onBack={() => handleNavigate('Home')}
             onUpdateUserData={handleUpdateUserData}
             onNavigate={handleNavigate}
+            onLogout={handleLogout} // ✅ 正確的登出功能
           />
         );
 
@@ -264,8 +316,8 @@ export default function App() {
         return (
           <AddCardPage 
             onAddCard={handleAddCard}
-            onCancel={() => handleNavigate('Home')}
-            onBack={() => handleNavigate('Home')}
+            onCancel={() => handleNavigate('MyCards')}
+            onBack={() => handleNavigate('MyCards')}
           />
         );
 
