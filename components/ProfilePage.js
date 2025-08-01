@@ -1,4 +1,4 @@
-// components/ProfilePage.js - 不需要 expo-image-picker 的版本
+// components/ProfilePage.js - 具備完整語言切換功能的個人資料頁面（增加邊緣滑動返回功能）
 import React, { useState } from 'react';
 import {
   View,
@@ -10,17 +10,28 @@ import {
   TextInput,
   Alert,
   Modal,
-  Image
+  Image,
+  PanResponder,
+  Dimensions,
+  Animated
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import HomePage from './HomePage';
 
 export default function ProfilePage({ 
   userData = {},
   onUpdateUserData,
   onNavigate,
   onLogout,
-  onBack // 明確聲明 onBack prop
+  onBack,
+  currentLanguage = 'en',
+  onLanguageChange,
+  getText,
+  // 🔥 新增：HomePage 完整渲染所需的 props
+  creditCards = [],
+  paymentHistory = [],
+  notificationSettings = {}
 }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(userData.name || 'Alex Taylor');
@@ -28,6 +39,119 @@ export default function ProfilePage({
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  // 🔥 簡化的管理員檢查函數
+const isAdmin = (userEmail) => {
+  const adminEmails = [
+    'saihengleung101@gmail.com',
+    // 如果日後需要添加其他管理員，在這裡添加Email
+  ];
+  return adminEmails.includes(userEmail);
+};
+
+  // 🔥 Apple風格邊緣滑動返回功能：漸進式頁面過渡（完全修復版本）
+  const screenWidth = Dimensions.get('window').width;
+  const edgeWidth = 20; // 左邊緣感應區域寬度
+  const swipeThreshold = screenWidth * 0.3; // 30%的屏幕寬度觸發返回
+  
+  // 動畫值：控制頁面滑動位置
+  const [slideAnimation] = useState(new Animated.Value(0));
+  const [isSliding, setIsSliding] = useState(false);
+  
+  const panResponder = PanResponder.create({
+    // 🎯 只在左邊緣區域啟動手勢識別
+    onStartShouldSetPanResponder: (evt, gestureState) => {
+      const startX = evt.nativeEvent.pageX;
+      return startX <= edgeWidth;
+    },
+    
+    // 🎯 持續追蹤手勢
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      const startX = evt.nativeEvent.pageX;
+      const deltaX = gestureState.dx;
+      return startX <= edgeWidth && deltaX > 0.5;
+    },
+    
+    // 🎯 手勢開始時的初始化
+    onPanResponderGrant: (evt, gestureState) => {
+      const startX = evt.nativeEvent.pageX;
+      if (startX <= edgeWidth) {
+        setIsSliding(true);
+        slideAnimation.setValue(0);
+        console.log('🔥 個人資料頁面Apple風格滑動開始');
+      }
+    },
+    
+    // 🎯 滑動過程中的實時更新
+    onPanResponderMove: (evt, gestureState) => {
+      if (!isSliding) return;
+      
+      const swipeDistance = Math.max(0, gestureState.dx);
+      const maxSlide = screenWidth * 0.8; // 最大滑動距離為屏幕寬度的80%
+      const clampedDistance = Math.min(swipeDistance, maxSlide);
+      
+      // 實時更新動畫值，讓頁面跟隨手指移動
+      slideAnimation.setValue(clampedDistance);
+      
+      console.log(`👤 個人資料頁面滑動進度: ${Math.round((clampedDistance / swipeThreshold) * 100)}%`);
+    },
+    
+    // 🎯 手勢結束時的判斷和動畫（修復抖動問題）
+    onPanResponderRelease: (evt, gestureState) => {
+      if (!isSliding) return;
+      
+      const swipeDistance = gestureState.dx;
+      const swipeVelocity = gestureState.vx;
+      
+      // 判斷是否應該執行返回操作
+      const shouldReturn = swipeDistance > swipeThreshold || swipeVelocity > 0.5;
+      
+      if (shouldReturn) {
+        // 🔥 修復抖動：執行平滑的返回動畫，完成後直接切換頁面
+        console.log('✅ 個人資料頁面滑動距離足夠，執行返回動畫');
+        Animated.timing(slideAnimation, {
+          toValue: screenWidth,
+          duration: 180, // 快速完成，避免衝突
+          useNativeDriver: true, // 🔥 使用原生驅動器，提供更流暢的動畫
+        }).start(({ finished }) => {
+          // 🔥 關鍵修復：只有在動畫真正完成時才執行返回操作
+          if (finished) {
+            // 先執行返回操作，讓頁面切換開始
+            onBack();
+            // 🔥 延遲重置動畫狀態，避免視覺抖動
+            setTimeout(() => {
+              setIsSliding(false);
+              slideAnimation.setValue(0);
+            }, 100);
+          }
+        });
+      } else {
+        // 返回原位動畫
+        console.log('↩️ 個人資料頁面滑動距離不足，返回原位');
+        Animated.spring(slideAnimation, {
+          toValue: 0,
+          tension: 150,
+          friction: 10,
+          useNativeDriver: true, // 🔥 使用原生驅動器
+        }).start(() => {
+          setIsSliding(false);
+        });
+      }
+    },
+    
+    // 🎯 手勢被取消時的處理
+    onPanResponderTerminate: (evt, gestureState) => {
+      if (isSliding) {
+        Animated.spring(slideAnimation, {
+          toValue: 0,
+          tension: 150,
+          friction: 10,
+          useNativeDriver: true, // 🔥 使用原生驅動器
+        }).start(() => {
+          setIsSliding(false);
+        });
+      }
+    },
+  });
 
   // 生成用戶ID
   const generateUserId = (name) => {
@@ -42,7 +166,7 @@ export default function ProfilePage({
   // 處理名字儲存
   const handleSaveName = () => {
     if (newName.trim().length === 0) {
-      Alert.alert('錯誤', '名字不能為空');
+      Alert.alert(getText('common.error'), getText('profile.nameCannotBeEmpty'));
       return;
     }
 
@@ -57,7 +181,7 @@ export default function ProfilePage({
     }
 
     setIsEditingName(false);
-    Alert.alert('成功', '個人資料已更新');
+    Alert.alert(getText('common.success'), getText('profile.profileUpdated'));
   };
 
   // 處理頭像查看（顯示放大版本）
@@ -72,7 +196,7 @@ export default function ProfilePage({
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (permissionResult.granted === false) {
-        Alert.alert('需要權限', '需要相簿權限才能上傳頭像！');
+        Alert.alert(getText('profile.permissionRequired'), getText('profile.cameraPermissionMessage'));
         return;
       }
 
@@ -94,353 +218,510 @@ export default function ProfilePage({
           onUpdateUserData(updatedUserData);
         }
 
-        Alert.alert('成功', '頭像已更新');
+        Alert.alert(getText('common.success'), getText('profile.avatarUpdated'));
       }
     } catch (error) {
-      console.error('選擇圖片錯誤:', error);
-      Alert.alert('錯誤', '無法更新頭像');
+      console.error('Image selection error:', error);
+      Alert.alert(getText('common.error'), getText('profile.failedToUpdateAvatar'));
     }
   };
 
   // 處理編輯按鈕點擊
   const handleEditPress = () => {
     Alert.alert(
-      'Edit Profile',
-      'Choose what you want to edit',
+      getText('profile.editProfile'),
+      getText('profile.editProfile'),
       [
         {
-          text: 'Cancel',
+          text: getText('common.cancel'),
           style: 'cancel'
         },
         {
-          text: 'Change Name',
+          text: getText('profile.changeName'),
           onPress: () => setIsEditingName(true)
         },
         {
-          text: 'Change Avatar',
+          text: getText('profile.changeAvatar'),
           onPress: handleAvatarUpload
         }
       ]
     );
   };
 
+  // 處理語言切換
+  const handleLanguageSelect = (languageCode) => {
+    if (onLanguageChange) {
+      onLanguageChange(languageCode);
+    }
+    setShowLanguageModal(false);
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header with Back Button */}
-      <View style={styles.headerNav}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => {
-            // 防御性編程：檢查 onBack 函數是否存在
-            if (onBack && typeof onBack === 'function') {
-              onBack();
-            } else {
-              // 如果 onBack 不存在，顯示警告並提供替代方案
-              Alert.alert(
-                '導航錯誤', 
-                '返回功能未正確配置。請檢查 App.js 中的 onBack prop 傳遞。',
-                [{ text: '確定', style: 'default' }]
-              );
-              console.warn('ProfilePage: onBack prop is missing or not a function');
-            }
-          }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.placeholder} />
+    <View style={styles.rootContainer} {...panResponder.panHandlers}>
+      {/* 🔥 背景層：完整的 Home Page 渲染 */}
+      <View style={styles.backgroundLayer}>
+        <HomePage
+          userData={userData}
+          creditCards={creditCards}
+          paymentHistory={paymentHistory}
+          notificationSettings={notificationSettings}
+          onNavigate={onNavigate || (() => {})}
+          getText={getText}
+          currentLanguage={currentLanguage}
+        />
       </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header with Avatar and Name */}
-        <View style={styles.header}>
-          <View style={styles.profileSection}>
-            <TouchableOpacity onPress={handleAvatarView} activeOpacity={0.7}>
-              <View style={styles.avatarContainer}>
-                {userData.avatar ? (
-                  <Image source={{ uri: userData.avatar }} style={styles.avatar} />
-                ) : (
-                  <View style={styles.defaultAvatar}>
-                    <MaterialIcons name="person" size={32} color="#666666" />
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-            
-            <View style={styles.nameSection}>
-              {isEditingName ? (
-                <View style={styles.editingContainer}>
-                  <TextInput
-                    style={styles.nameInput}
-                    value={newName}
-                    onChangeText={setNewName}
-                    placeholder="輸入您的名字"
-                    autoFocus
-                  />
-                  <View style={styles.editButtons}>
-                    <TouchableOpacity 
-                      style={styles.saveButton} 
-                      onPress={handleSaveName}
-                    >
-                      <Text style={styles.saveButtonText}>儲存</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.cancelButton} 
-                      onPress={() => setIsEditingName(false)}
-                    >
-                      <Text style={styles.cancelButtonText}>取消</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
-                <View>
-                  <Text style={styles.userName}>{userData.name || 'Alex Taylor'}</Text>
-                  <Text style={styles.userId}>{currentUserId}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-          
-          <TouchableOpacity 
-            style={styles.editButton} 
-            onPress={handleEditPress}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="edit" size={20} color="#000000" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Settings Section */}
-        <View style={styles.settingsSection}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={() => setShowLanguageModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="language" size={24} color="#000000" />
-              <Text style={styles.settingText}>Language Settings</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666666" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={() => setShowPrivacyModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="security" size={24} color="#000000" />
-              <Text style={styles.settingText}>Privacy & Security</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666666" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={() => setShowHelpModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialIcons name="help" size={24} color="#000000" />
-              <Text style={styles.settingText}>Help & Support</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Get Reminders Now Card */}
-        <View style={styles.reminderCard}>
-          <Text style={styles.reminderTitle}>Get reminders now!</Text>
-          <Text style={styles.reminderSubtitle}>
-            Set reminders for your payments today!
-          </Text>
-          <TouchableOpacity 
-            style={styles.shareButton}
-            onPress={() => Alert.alert('Share App', 'Share app functionality would be implemented here')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.shareButtonText}>Share app</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={() => {
-            Alert.alert(
-              'Log Out',
-              'Are you sure you want to log out?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { 
-                  text: 'Log Out', 
-                  style: 'destructive',
-                  onPress: onLogout 
+      
+      {/* 🔥 前景層：當前頁面內容，支持滑動動畫 */}
+      <Animated.View 
+        style={[
+          styles.foregroundLayer,
+          {
+            transform: [{
+              translateX: slideAnimation
+            }]
+          }
+        ]}
+      >
+        <SafeAreaView style={styles.container}>
+          {/* Header with Back Button */}
+          <View style={styles.headerNav}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => {
+                if (onBack && typeof onBack === 'function') {
+                  onBack();
+                } else {
+                  Alert.alert(
+                    'Navigation Error', 
+                    'Back function is not properly configured. Please check the onBack prop in App.js.',
+                    [{ text: getText('common.ok'), style: 'default' }]
+                  );
+                  console.warn('ProfilePage: onBack prop is missing or not a function');
                 }
-              ]
-            );
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.logoutText}>Log out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* Language Selection Modal */}
-      <Modal
-        visible={showLanguageModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowLanguageModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Language Settings</Text>
-            
-            <TouchableOpacity style={styles.languageOption}>
-              <Text style={styles.languageText}>English</Text>
-              <MaterialIcons name="check" size={20} color="#4CAF50" />
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={24} color="#000000" />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.languageOption}>
-              <Text style={styles.languageText}>繁體中文</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowLanguageModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{getText('profile.title')}</Text>
+            <View style={styles.placeholder} />
           </View>
-        </View>
-      </Modal>
 
-      {/* Privacy & Security Modal */}
-      <Modal
-        visible={showPrivacyModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowPrivacyModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Privacy & Security</Text>
-            <ScrollView style={styles.modalScroll}>
-              <Text style={styles.privacyText}>
-                Your privacy is important to us. This app stores your credit card information locally on your device and does not transmit sensitive financial data to external servers.
-                {'\n\n'}
-                We collect only the minimum information necessary to provide our services:
-                {'\n'}• Credit card names and due dates (no card numbers)
-                {'\n'}• Payment reminder preferences
-                {'\n'}• Usage statistics for app improvement
-                {'\n\n'}
-                Your data is encrypted and stored securely on your device. We do not share your personal information with third parties without your explicit consent.
-              </Text>
-            </ScrollView>
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowPrivacyModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Help & Support Modal */}
-      <Modal
-        visible={showHelpModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowHelpModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Help & Support</Text>
-            <ScrollView style={styles.modalScroll}>
-              <Text style={styles.helpText}>
-                <Text style={styles.helpSectionTitle}>Frequently Asked Questions{'\n\n'}</Text>
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            {/* Header with Avatar and Name */}
+            <View style={styles.header}>
+              <View style={styles.profileSection}>
+                <TouchableOpacity onPress={handleAvatarView} activeOpacity={0.7}>
+                  <View style={styles.avatarContainer}>
+                    {userData.avatar ? (
+                      <Image source={{ uri: userData.avatar }} style={styles.avatar} />
+                    ) : (
+                      <View style={styles.defaultAvatar}>
+                        <MaterialIcons name="person" size={32} color="#666666" />
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
                 
-                <Text style={styles.helpQuestion}>How do I add a credit card?{'\n'}</Text>
-                <Text style={styles.helpAnswer}>Tap the '+' button on the home screen and fill in your card details. We only store the card name, bank, and due date - never your card number.{'\n\n'}</Text>
-                
-                <Text style={styles.helpQuestion}>How do notifications work?{'\n'}</Text>
-                <Text style={styles.helpAnswer}>The app sends local notifications based on your settings. You can customize reminder times in the Notifications section.{'\n\n'}</Text>
-                
-                <Text style={styles.helpQuestion}>Is my data secure?{'\n'}</Text>
-                <Text style={styles.helpAnswer}>Yes, all data is stored locally on your device and encrypted. We never store sensitive financial information.{'\n\n'}</Text>
-                
-                <Text style={styles.helpQuestion}>Need more help?{'\n'}</Text>
-                <Text style={styles.helpAnswer}>Contact our support team at support@cardreminder.app for additional assistance.</Text>
-              </Text>
-            </ScrollView>
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowHelpModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      {/* Avatar View Modal */}
-      <Modal
-        visible={showAvatarModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowAvatarModal(false)}
-      >
-        <View style={styles.avatarModalOverlay}>
-          <TouchableOpacity 
-            style={styles.avatarModalBackground}
-            onPress={() => setShowAvatarModal(false)}
-            activeOpacity={1}
-          >
-            <View style={styles.avatarModalContent}>
+                <View style={styles.nameSection}>
+                  {isEditingName ? (
+                    <View style={styles.editingContainer}>
+                      <TextInput
+                        style={styles.nameInput}
+                        value={newName}
+                        onChangeText={setNewName}
+                        placeholder={getText('profile.enterYourName') || 'Enter your name'}
+                        autoFocus
+                      />
+                      <View style={styles.editButtons}>
+                        <TouchableOpacity 
+                          style={styles.saveButton} 
+                          onPress={handleSaveName}
+                        >
+                          <Text style={styles.saveButtonText}>{getText('common.save')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.cancelButton} 
+                          onPress={() => setIsEditingName(false)}
+                        >
+                          <Text style={styles.cancelButtonText}>{getText('common.cancel')}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View>
+                      <Text style={styles.userName}>{userData.name || 'Alex Taylor'}</Text>
+                      <Text style={styles.userId}>{currentUserId}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              
               <TouchableOpacity 
-                style={styles.avatarCloseButton}
-                onPress={() => setShowAvatarModal(false)}
+                style={styles.editButton} 
+                onPress={handleEditPress}
                 activeOpacity={0.7}
               >
-                <MaterialIcons name="close" size={24} color="#FFFFFF" />
+                <MaterialIcons name="edit" size={20} color="#000000" />
               </TouchableOpacity>
-              
-              <View style={styles.enlargedAvatarContainer}>
-                {userData.avatar ? (
-                  <Image source={{ uri: userData.avatar }} style={styles.enlargedAvatar} />
-                ) : (
-                  <View style={styles.enlargedDefaultAvatar}>
-                    <MaterialIcons name="person" size={80} color="#666666" />
-                  </View>
-                )}
-              </View>
-              
-              <Text style={styles.avatarModalName}>{userData.name || 'Alex Taylor'}</Text>
             </View>
-          </TouchableOpacity>
+
+            {/* Settings Section */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.sectionTitle}>{getText('profile.settings')}</Text>
+              
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => setShowLanguageModal(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="language" size={24} color="#000000" />
+                  <Text style={styles.settingText}>{getText('profile.languageSettings')}</Text>
+                </View>
+                <View style={styles.settingRight}>
+                  <Text style={styles.currentLanguageText}>
+                    {currentLanguage === 'en' ? 'English' : '繁體中文'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#666666" />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => setShowPrivacyModal(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="security" size={24} color="#000000" />
+                  <Text style={styles.settingText}>{getText('profile.privacySecurity')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#666666" />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => setShowHelpModal(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <MaterialIcons name="help" size={24} color="#000000" />
+                  <Text style={styles.settingText}>{getText('profile.helpSupport')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#666666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Get Reminders Now Card */}
+            <View style={styles.reminderCard}>
+              <Text style={styles.reminderTitle}>{getText('profile.reminderTitle')}</Text>
+              <Text style={styles.reminderSubtitle}>
+                {getText('profile.reminderSubtitle')}
+              </Text>
+              <TouchableOpacity 
+                style={styles.shareButton}
+                onPress={() => Alert.alert(
+                  getText('profile.shareApp'),
+                  getText('profile.comingSoon')
+                )}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.shareButtonText}>{getText('profile.shareApp')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Logout Button */}
+            <TouchableOpacity 
+              style={styles.logoutButton}
+              onPress={() => {
+                Alert.alert(
+                  getText('profile.logout'),
+                  getText('profile.logoutConfirm'),
+                  [
+                    { text: getText('common.cancel'), style: 'cancel' },
+                    { 
+                      text: getText('profile.logout'), 
+                      style: 'destructive',
+                      onPress: onLogout 
+                    }
+                  ]
+                );
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.logoutText}>{getText('profile.logout')}</Text>
+            </TouchableOpacity>
+            {/* 🔥 管理員專用功能區域 - 只有管理員可見 */}
+{isAdmin(userData.email) && (
+  <View style={styles.adminSection}>
+    <Text style={styles.adminSectionTitle}>
+      {currentLanguage === 'zh-TW' ? '管理員功能' : 'Admin Functions'}
+    </Text>
+    
+    <TouchableOpacity 
+      style={styles.adminButton}
+      onPress={() => onNavigate('Admin')}
+      activeOpacity={0.7}
+    >
+      <View style={styles.adminButtonContent}>
+        <MaterialIcons name="admin-panel-settings" size={24} color="#FF6B35" />
+        <View style={styles.adminButtonText}>
+          <Text style={styles.adminButtonTitle}>
+            {currentLanguage === 'zh-TW' ? '資料庫管理' : 'Database Management'}
+          </Text>
+          <Text style={styles.adminButtonSubtitle}>
+            {currentLanguage === 'zh-TW' ? '管理信用卡資料和系統設定' : 'Manage credit card data and system settings'}
+          </Text>
         </View>
-      </Modal>
-    </SafeAreaView>
+        <Ionicons name="chevron-forward" size={20} color="#666666" />
+      </View>
+    </TouchableOpacity>
+  </View>
+)}
+          </ScrollView>
+
+          {/* Language Selection Modal - 統一樣式 */}
+          <Modal
+            visible={showLanguageModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowLanguageModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>{getText('profile.languageSettings')}</Text>
+                
+                <View style={styles.languageOptionsContainer}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.languageOption,
+                      currentLanguage === 'en' && styles.selectedLanguageOption
+                    ]}
+                    onPress={() => handleLanguageSelect('en')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.languageOptionContent}>
+                      <View>
+                        <Text style={[
+                          styles.languageOptionTitle,
+                          currentLanguage === 'en' && styles.selectedLanguageTitle
+                        ]}>
+                          English
+                        </Text>
+                        <Text style={styles.languageOptionSubtitle}>English</Text>
+                      </View>
+                      {currentLanguage === 'en' && (
+                        <MaterialIcons name="check" size={24} color="#2196F3" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[
+                      styles.languageOption,
+                      currentLanguage === 'zh-TW' && styles.selectedLanguageOption
+                    ]}
+                    onPress={() => handleLanguageSelect('zh-TW')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.languageOptionContent}>
+                      <View>
+                        <Text style={[
+                          styles.languageOptionTitle,
+                          currentLanguage === 'zh-TW' && styles.selectedLanguageTitle
+                        ]}>
+                          Traditional Chinese
+                        </Text>
+                        <Text style={styles.languageOptionSubtitle}>繁體中文</Text>
+                      </View>
+                      {currentLanguage === 'zh-TW' && (
+                        <MaterialIcons name="check" size={24} color="#2196F3" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowLanguageModal(false)}
+                >
+                  <Text style={styles.modalCloseText}>{getText('common.cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Privacy & Security Modal */}
+          <Modal
+            visible={showPrivacyModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowPrivacyModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>{getText('profile.privacySecurity')}</Text>
+                <ScrollView style={styles.modalScroll}>
+                  <Text style={styles.privacyText}>
+                    {currentLanguage === 'en' 
+                      ? `Your privacy is important to us. This app stores your credit card information locally on your device and does not transmit sensitive financial data to external servers.
+
+We collect only the minimum information necessary to provide our services:
+• Credit card names and due dates (no card numbers)
+• Payment reminder preferences  
+• Usage statistics for app improvement
+
+Your data is encrypted and stored securely on your device. We do not share your personal information with third parties without your explicit consent.`
+                      : `您的隱私對我們很重要。本應用程式將您的信用卡資訊本地儲存在您的設備上，不會將敏感的財務數據傳輸到外部伺服器。
+
+我們僅收集提供服務所需的最少資訊：
+• 信用卡名稱和到期日（不包括卡號）
+• 付款提醒偏好設定
+• 應用程式改進的使用統計
+
+您的數據經過加密並安全地儲存在您的設備上。我們不會在未經您明確同意的情況下與第三方分享您的個人資訊。`
+                    }
+                  </Text>
+                </ScrollView>
+                <TouchableOpacity 
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowPrivacyModal(false)}
+                >
+                  <Text style={styles.modalCloseText}>{getText('common.close')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Help & Support Modal */}
+          <Modal
+            visible={showHelpModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowHelpModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>{getText('profile.helpSupport')}</Text>
+                <ScrollView style={styles.modalScroll}>
+                  <Text style={styles.helpText}>
+                    {currentLanguage === 'en'
+                      ? `Frequently Asked Questions
+
+How do I add a credit card?
+Tap the '+' button on the home screen and fill in your card details. We only store the card name, bank, and due date - never your card number.
+
+How do notifications work?
+The app sends local notifications based on your settings. You can customize reminder times in the Notifications section.
+
+Is my data secure?
+Yes, all data is stored locally on your device and encrypted. We never store sensitive financial information.
+
+Need more help?
+Contact our support team at support@cardreminder.app for additional assistance.`
+                      : `常見問題
+
+如何新增信用卡？
+點擊主畫面上的「+」按鈕並填寫您的卡片詳細資料。我們僅儲存卡片名稱、銀行和到期日 - 絕不儲存您的卡號。
+
+通知如何運作？
+應用程式根據您的設定發送本地通知。您可以在通知部分自訂提醒時間。
+
+我的資料安全嗎？
+是的，所有資料都本地儲存在您的設備上並經過加密。我們絕不儲存敏感的財務資訊。
+
+需要更多幫助？
+請聯絡我們的支援團隊 support@cardreminder.app 以獲得額外協助。`
+                    }
+                  </Text>
+                </ScrollView>
+                <TouchableOpacity 
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowHelpModal(false)}
+                >
+                  <Text style={styles.modalCloseText}>{getText('common.close')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Avatar View Modal */}
+          <Modal
+            visible={showAvatarModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowAvatarModal(false)}
+          >
+            <View style={styles.avatarModalOverlay}>
+              <TouchableOpacity 
+                style={styles.avatarModalBackground}
+                onPress={() => setShowAvatarModal(false)}
+                activeOpacity={1}
+              >
+                <View style={styles.avatarModalContent}>
+                  <TouchableOpacity 
+                    style={styles.avatarCloseButton}
+                    onPress={() => setShowAvatarModal(false)}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons name="close" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  
+                  <View style={styles.enlargedAvatarContainer}>
+                    {userData.avatar ? (
+                      <Image source={{ uri: userData.avatar }} style={styles.enlargedAvatar} />
+                    ) : (
+                      <View style={styles.enlargedDefaultAvatar}>
+                        <MaterialIcons name="person" size={80} color="#666666" />
+                      </View>
+                    )}
+                  </View>
+                  
+                  <Text style={styles.avatarModalName}>{userData.name || 'Alex Taylor'}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </Modal>
+        </SafeAreaView>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // 🔥 Apple風格邊緣滑動的新增樣式
+  rootContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  backgroundLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#F5F5F5',
+  },
+  foregroundLayer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5', // Light gray background like in image
+    backgroundColor: '#F5F5F5',
   },
   headerNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 30, // Raised to 30px as requested
+    paddingTop: 30,
     paddingBottom: 12,
     backgroundColor: '#F5F5F5',
     borderBottomWidth: 1,
@@ -466,7 +747,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20, // 減少上方間距，因為已有導航 header
+    paddingTop: 20,
     paddingBottom: 24,
     backgroundColor: '#F5F5F5',
   },
@@ -574,8 +855,17 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginLeft: 12,
   },
+  settingRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currentLanguageText: {
+    fontSize: 14,
+    color: '#666666',
+    marginRight: 8,
+  },
   reminderCard: {
-    backgroundColor: '#2C2C2C', // Dark background like in image
+    backgroundColor: '#2C2C2C',
     marginHorizontal: 16,
     borderRadius: 12,
     padding: 20,
@@ -606,7 +896,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   logoutButton: {
-    backgroundColor: '#2C2C2C', // Dark background like in image
+    backgroundColor: '#2C2C2C',
     marginHorizontal: 16,
     borderRadius: 12,
     paddingVertical: 16,
@@ -640,18 +930,6 @@ const styles = StyleSheet.create({
   modalScroll: {
     maxHeight: 300,
   },
-  languageOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  languageText: {
-    fontSize: 16,
-    color: '#000000',
-  },
   modalCloseButton: {
     backgroundColor: '#2196F3',
     paddingVertical: 12,
@@ -674,19 +952,39 @@ const styles = StyleSheet.create({
     color: '#333333',
     lineHeight: 20,
   },
-  helpSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
+  // 新增：語言選擇相關樣式
+  languageOptionsContainer: {
+    marginBottom: 16,
   },
-  helpQuestion: {
-    fontSize: 14,
-    fontWeight: '600',
+  languageOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  selectedLanguageOption: {
+    borderColor: '#2196F3',
+    backgroundColor: '#F3F9FF',
+  },
+  languageOptionContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  languageOptionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+    marginBottom: 2,
+  },
+  selectedLanguageTitle: {
     color: '#2196F3',
   },
-  helpAnswer: {
+  languageOptionSubtitle: {
     fontSize: 14,
-    color: '#333333',
+    color: '#666666',
   },
   avatarModalOverlay: {
     flex: 1,
@@ -742,4 +1040,47 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
   },
+  // 🔥 管理員功能區域的新樣式
+adminSection: {
+  backgroundColor: '#FFF8F0',
+  marginHorizontal: 16,
+  borderRadius: 12,
+  padding: 20,
+  marginBottom: 32,
+  borderWidth: 1,
+  borderColor: '#FFE0B2',
+},
+adminSectionTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#FF6B35',
+  marginBottom: 12,
+  textAlign: 'center',
+},
+adminButton: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 8,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: '#FFE0B2',
+},
+adminButtonContent: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+adminButtonText: {
+  flex: 1,
+  marginLeft: 12,
+},
+adminButtonTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#333333',
+  marginBottom: 2,
+},
+adminButtonSubtitle: {
+  fontSize: 12,
+  color: '#666666',
+  lineHeight: 16,
+},
 });

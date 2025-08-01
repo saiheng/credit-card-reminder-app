@@ -4,6 +4,7 @@
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 // 設定通知的行為方式
@@ -211,46 +212,58 @@ class NotificationManager {
 
   // 獲取通知內容（可愛風格）
   getNotificationContent(card, daysBefore) {
-    const petEmojis = ['🐱', '🐶', '🐰', '🐼', '🐸'];
-    const petEmoji = petEmojis[Math.floor(Math.random() * petEmojis.length)];
-    
     if (daysBefore === 7) {
       return {
-        title: `${petEmoji} 寵物提醒`,
-        body: `您的 ${card.cardName} 寵物還有7天就要餵食了～記得準備好食物哦！`
+        title: `信用卡還款提醒`,
+        body: `您的${card.cardName} 還有7天到期，請準備還款金額`
       };
     } else if (daysBefore === 3) {
       return {
-        title: `${petEmoji} 重要提醒`,
-        body: `${card.cardName} 寵物還有3天就餓了！快準備餵食吧～`
+        title: `重要還款提醒`,
+        body: `您的${card.cardName} 還有3天到期，請儘快安排還款`
       };
     } else if (daysBefore === 1) {
       return {
-        title: `${petEmoji} 緊急提醒`,
-        body: `明天就要餵養 ${card.cardName} 了！您的寵物在等待中～`
+        title: `緊急還款提醒`,
+        body: `您的${card.cardName} 明天到期，請立即處理還款`
       };
     } else if (daysBefore === 0) {
       return {
-        title: `${petEmoji} 餵食時間！`,
-        body: `今天是 ${card.cardName} 的餵食日！快來照顧您的寵物吧～`
+        title: `今日還款到期`,
+        body: `您的${card.cardName} 今天到期，請立即還款避免逾期費用`
       };
     }
     
     return {
-      title: `${petEmoji} 寵物提醒`,
-      body: `${card.cardName} 需要您的照顧～`
+      title: `信用卡還款提醒`,
+      body: `${card.cardName}即將到期，請及時處理還款`
     };
   }
 
   // 獲取逾期通知內容
   getOverdueNotificationContent(card, daysOverdue) {
-    const sadEmojis = ['😢', '😭', '🥺', '😿'];
-    const sadEmoji = sadEmojis[Math.floor(Math.random() * sadEmojis.length)];
-    
-    return {
-      title: `${sadEmoji} 寵物很餓`,
-      body: `${card.cardName} 寵物已經餓了${daysOverdue}天了！快來餵食讓它開心起來～`
-    };
+    // 根據逾期天數提供相應嚴重程度的警告
+    if (daysOverdue === 1) {
+      return {
+        title: '信用卡逾期通知',
+        body: `${card.cardName}已逾期1天，請立即還款避免產生更多費用`
+      };
+    } else if (daysOverdue <= 3) {
+      return {
+        title: '逾期還款警告',
+        body: `${card.cardName}已逾期${daysOverdue}天，請立即還款避免影響信用記錄`
+      };
+    } else if (daysOverdue <= 7) {
+      return {
+        title: '嚴重逾期警告',
+        body: `${card.cardName}已逾期${daysOverdue}天，請立即聯絡銀行安排還款`
+      };
+    } else {
+      return {
+        title: '長期逾期警告',
+        body: `${card.cardName}已逾期${daysOverdue}天，請立即處理以避免嚴重後果`
+      };
+    }
   }
 
   // 為所有卡片重新安排通知
@@ -294,11 +307,11 @@ class NotificationManager {
   // 發送測試通知
   async sendTestNotification(language = 'zh') {
     const testContent = language === 'zh' ? {
-      title: '🐱 測試通知',
-      body: '您的寵物管家正常運作中～'
+      title: '測試通知',
+      body: '您信用卡還款提醒功能正常運作中，您將準時收到還款通知'
     } : {
-      title: '🐱 Test Notification',
-      body: 'Your pet manager is working properly~'
+      title: 'Test Notification',
+      body: 'Credit card payment reminder is working properly, you will receive payment notifications on time'
     };
 
     try {

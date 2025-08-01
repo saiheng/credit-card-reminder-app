@@ -1,4 +1,4 @@
-// components/WelcomePage.js - 重新設計版本，符合附圖要求
+// components/WelcomePage.js - 重新設計版本，符合附圖要求，支援多語言
 import React from 'react';
 import {
   View,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
-export default function WelcomePage({ onStartNow }) {
+export default function WelcomePage({ onStartNow, getText }) {
   
   const handleStartPress = () => {
     console.log('Start Now pressed');
@@ -33,7 +33,7 @@ export default function WelcomePage({ onStartNow }) {
           <View style={styles.appIconContainer}>
             <MaterialIcons name="credit-card" size={24} color="#FFFFFF" />
           </View>
-          <Text style={styles.appName}>CardReminder</Text>
+          <Text style={styles.appName}>{getText ? getText('welcome.title') : 'CardReminder'}</Text>
         </View>
 
         {/* 主要插圖區域 - 使用您提供的圖片 */}
@@ -47,9 +47,11 @@ export default function WelcomePage({ onStartNow }) {
 
         {/* 主標題和描述 */}
         <View style={styles.contentSection}>
-          <Text style={styles.mainTitle}>Manage Your Payments</Text>
+          <Text style={styles.mainTitle}>
+            {getText ? getText('welcome.mainTitle') : 'Manage Your Payments'}
+          </Text>
           <Text style={styles.description}>
-            Stay on top of your credit card payments with timely reminders and easy tracking.
+            {getText ? getText('welcome.description') : 'Stay on top of your credit card payments with timely reminders and easy tracking.'}
           </Text>
         </View>
 
@@ -60,7 +62,9 @@ export default function WelcomePage({ onStartNow }) {
             onPress={handleStartPress}
             activeOpacity={0.8}
           >
-            <Text style={styles.startButtonText}>Start Now</Text>
+            <Text style={styles.startButtonText}>
+              {getText ? getText('welcome.startButton') : 'Start Now'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

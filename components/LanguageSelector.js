@@ -1,4 +1,4 @@
-// components/LanguageSelector.js - 語言選擇組件
+// components/LanguageSelector.js - 完整的語言選擇組件
 import React from 'react';
 import {
   View,

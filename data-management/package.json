@@ -1,0 +1,19 @@
+{
+  "name": "credit-card-data-management-clean",
+  "version": "3.0.0",
+  "description": "清潔版信用卡數據管理與MoneyHero同步系統",
+  "main": "sync_moneyhero_only.js",
+  "scripts": {
+    "clean-import": "node import_data_to_firebase_clean.js",
+    "sync": "node sync_moneyhero_only.js",
+    "sync-schedule": "node sync_moneyhero_only.js --schedule",
+    "protect": "node manual_modification_helper.js",
+    "status": "node manual_modification_helper.js status"
+  },
+  "dependencies": {
+    "firebase": "^12.0.0",
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12",
+    "node-cron": "^3.0.3"
+  }
+}

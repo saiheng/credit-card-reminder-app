@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CardReminder - 郵件驗證成功</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 30px 20px;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .success-icon::after {
+            content: '✓';
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            background: #E8F5E8;
+            color: #2E7D32;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .main-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .main-button:active {
+            transform: translateY(0);
+        }
+
+        .main-button.loading {
+            background: #2196F3;
+        }
+
+        .main-button.success {
+            background: #4CAF50;
+        }
+
+        .main-button.error {
+            background: #FF9800;
+        }
+
+        .button-text {
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .content {
+            padding: 0 30px 30px;
+        }
+
+        .environment-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #666;
+            border-left: 4px solid #2196F3;
+        }
+
+        .steps-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .steps-header {
+            background: #e3f2fd;
+            padding: 15px 20px;
+            color: #1976d2;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .step:last-child {
+            border-bottom: none;
+        }
+
+        .step-number {
+            background: #2196F3;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            color: #333;
+            font-size: 14px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 0 30px 30px;
+            color: #888;
+            font-size: 13px;
+        }
+
+        .expandable-section {
+            margin: 15px 0;
+        }
+
+        .expand-button {
+            background: #e3f2fd;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            color: #1976d2;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .expand-button:hover {
+            background: #bbdefb;
+        }
+
+        .expandable-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .expandable-content.expanded {
+            max-height: 500px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 30px 20px 15px;
+            }
+            
+            .content, .footer {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+            
+            .title {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-icon"></div>
+            <div class="status-badge">✓ 驗證完成</div>
+            <h1 class="title">🎉 郵件驗證成功！</h1>
+            <p class="subtitle">恭喜您！您的電子郵件地址已成功驗證。現在可以使用完整的 CardReminder 功能了。</p>
+        </div>
+
+        <div class="content">
+            <button class="main-button" onclick="openCardReminder()">
+                <span class="button-text">✨ 立即開始使用</span>
+            </button>
+            <div class="environment-info" id="environmentInfo">
+                <strong>🔍 檢測環境中...</strong><br>
+                正在分析您的開發環境...
+            </div>
+
+            <div class="expandable-section">
+                <button class="expand-button" onclick="toggleDetails()">
+                    📋 查看詳細說明 ▼
+                </button>
+                <div class="expandable-content" id="detailsContent">
+                    <div class="steps-section">
+                        <div class="steps-header">
+                            🚀 接下來的步驟
+                        </div>
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-text">返回應用程式</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-text">使用帳號登入</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-text">添加信用卡</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-text">享受智能管理</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            CardReminder<br>
+            您的個人信用卡管理助手，幫助您追蹤所有優惠和重要日期。
+        </div>
+    </div>
+
+    <script>
+        // 🔥 智能環境檢測和URL生成系統
+        let currentEnvironment = 'detecting';
+        let appUrl = '';
+
+        // 檢測當前環境並設置正確的URL
+        function detectEnvironmentAndSetUrl() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const hostname = window.location.hostname;
+            
+            console.log('🔍 開始環境檢測:', {
+                userAgent: userAgent,
+                hostname: hostname,
+                protocol: window.location.protocol
+            });
+
+            // 檢測是否在Expo Go環境中
+            const isExpoGo = userAgent.includes('expo') || 
+                           hostname.includes('expo') ||
+                           window.location.href.includes('expo');
+
+            // 檢測是否在開發環境中
+            const isDevelopment = hostname === 'localhost' || 
+                                hostname.includes('192.168') || 
+                                hostname.includes('10.0') ||
+                                hostname.includes('expo.dev') ||
+                                hostname.includes('ngrok');
+
+            let environmentText = '';
+            let environmentClass = '';
+
+            if (isExpoGo || isDevelopment) {
+                // 開發環境：使用Expo Go的URL scheme
+                currentEnvironment = 'development';
+                // 🔥 使用您的實際Expo項目URL
+                appUrl = 'exp://192.168.1.100:8081/--/verified'; // 您需要替換為實際IP
+                
+                // 嘗試從Expo開發服務器獲取正確的URL
+                if (window.location.hostname !== 'localhost') {
+                    // 如果在Expo web上，嘗試構建Expo Go URL
+                    appUrl = `exp://${window.location.hostname}:8081/--/verified`;
+                }
+                
+                environmentText = `
+                    <strong>🛠️ 開發環境檢測</strong><br>
+                    檢測到您正在使用Expo Go進行測試。在開發階段，深度鏈接會使用特殊的URL格式。
+                    當應用程式發佈到App Store和Google Play後，將使用標準的深度鏈接。
+                `;
+                environmentClass = 'development';
+            } else {
+                // 生產環境：使用自定義URL scheme
+                currentEnvironment = 'production';
+                appUrl = 'cardreminder://verified';
+                
+                environmentText = `
+                    <strong>🚀 生產環境</strong><br>
+                    您正在使用發佈版本的驗證頁面。點擊按鈕將直接打開CardReminder應用程式。
+                `;
+                environmentClass = 'production';
+            }
+
+            // 更新環境信息顯示
+            const envInfo = document.getElementById('environmentInfo');
+            envInfo.innerHTML = environmentText;
+            envInfo.className = `environment-info ${environmentClass}`;
+
+            console.log('✅ 環境檢測完成:', {
+                environment: currentEnvironment,
+                appUrl: appUrl
+            });
+        }
+
+        // 打開CardReminder應用程式的主要函數
+        function openCardReminder() {
+            const button = document.querySelector('.main-button');
+            const buttonText = document.querySelector('.button-text');
+            
+            console.log('🚀 嘗試打開應用程式:', {
+                environment: currentEnvironment,
+                url: appUrl
+            });
+
+            // 更新按鈕狀態為載入中
+            button.className = 'main-button loading';
+            buttonText.textContent = '正在打開應用程式...';
+
+            // 🔥 根據環境使用不同的策略
+            if (currentEnvironment === 'development') {
+                handleDevelopmentOpen();
+            } else {
+                handleProductionOpen();
+            }
+        }
+
+        // 處理開發環境（Expo Go）的應用程式打開
+        function handleDevelopmentOpen() {
+            const button = document.querySelector('.main-button');
+            const buttonText = document.querySelector('.button-text');
+
+            // 在開發環境中，提供手動指引
+            setTimeout(() => {
+                button.className = 'main-button error';
+                buttonText.innerHTML = '需要手動返回 Expo Go';
+                
+                // 更新環境信息為指引
+                const envInfo = document.getElementById('environmentInfo');
+                envInfo.innerHTML = `
+                    <strong>📱 開發環境指引</strong><br>
+                    1. 請手動切換到 Expo Go 應用程式<br>
+                    2. 您的 CardReminder 應該仍在運行中<br>
+                    3. 在應用程式中登入您剛驗證的帳戶<br><br>
+                    <em>💡 在正式版本中，按鈕將自動打開應用程式</em>
+                `;
+
+                setTimeout(() => {
+                    button.className = 'main-button';
+                    buttonText.textContent = '我瞭解了，返回應用程式';
+                    button.onclick = () => {
+                        // 嘗試打開Expo Go（如果可能）
+                        window.location.href = 'expo://';
+                    };
+                }, 2000);
+            }, 1000);
+        }
+
+        // 處理生產環境的應用程式打開
+        function handleProductionOpen() {
+            const button = document.querySelector('.main-button');
+            const buttonText = document.querySelector('.button-text');
+
+            // 嘗試打開應用程式
+            const startTime = Date.now();
+            
+            // 設置頁面可見性監聽器來檢測應用程式是否成功打開
+            const handleVisibilityChange = () => {
+                if (document.visibilityState === 'hidden') {
+                    // 頁面變為隱藏，可能表示應用程式成功打開
+                    setTimeout(() => {
+                        if (document.visibilityState === 'hidden') {
+                            button.className = 'main-button success';
+                            buttonText.textContent = '✅ 已打開應用程式';
+                        }
+                    }, 500);
+                    document.removeEventListener('visibilitychange', handleVisibilityChange);
+                }
+            };
+
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            // 嘗試打開應用程式
+            window.location.href = appUrl;
+
+            // 如果3秒後仍在頁面上，顯示手動指引
+            setTimeout(() => {
+                if (document.visibilityState === 'visible') {
+                    button.className = 'main-button error';
+                    buttonText.textContent = '需要手動打開應用程式';
+                    
+                    const envInfo = document.getElementById('environmentInfo');
+                    envInfo.innerHTML = `
+                        <strong>📱 手動操作指引</strong><br>
+                        如果應用程式沒有自動打開，請：<br>
+                        1. 手動打開 CardReminder 應用程式<br>
+                        2. 使用您剛驗證的電子郵件登入<br>
+                        3. 開始享受完整功能
+                    `;
+                }
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            }, 3000);
+        }
+
+        // 切換詳細說明的顯示
+        function toggleDetails() {
+            const content = document.getElementById('detailsContent');
+            const button = document.querySelector('.expand-button');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                button.textContent = '📋 查看詳細說明 ▼';
+            } else {
+                content.classList.add('expanded');
+                button.textContent = '📋 隱藏詳細說明 ▲';
+            }
+        }
+
+        // 頁面載入完成後初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🌟 CardReminder 驗證頁面已載入');
+            detectEnvironmentAndSetUrl();
+        });
+    </script>
+</body>
+</html>
