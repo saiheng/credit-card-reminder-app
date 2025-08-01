@@ -13,9 +13,14 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.barry.cardreminder",
+      "buildNumber": "1.0.0"
     },
     "android": {
+      "package": "com.barry.cardreminder",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -24,6 +29,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "scheme": "cardreminder",
+    "extra": {
+      "eas": {
+        "projectId": "0e2b323d-4259-4994-aa87-eef76a7a965c"
+      }
+    },
+    "plugins": [
+      "expo-web-browser",
+      "expo-build-properties"
+    ]
   }
 }

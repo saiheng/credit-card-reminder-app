@@ -1,4 +1,4 @@
-// components/AddCardPage.js - 修復版，調整頭部位置避免動態島遮擋
+// components/AddCardPage.js - 具備完整多語言支持和Apple風格邊緣滑動返回功能
 import React, { useState } from 'react';
 import {
   View,
@@ -8,53 +8,210 @@ import {
   ScrollView,
   SafeAreaView,
   TextInput,
-  Alert
+  Alert,
+  PanResponder,
+  Dimensions,
+  Animated
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import MyCardsPage from './MyCardsPage';
 
 const HONG_KONG_BANKS = [
-  { value: 'hsbc', label: 'HSBC', color: '#db0011' },
-  { value: 'hangseng', label: 'Hang Seng Bank', color: '#0066cc' },
-  { value: 'boc', label: 'Bank of China (Hong Kong)', color: '#8B0000' },
-  { value: 'icbc', label: 'ICBC (Asia)', color: '#c41e3a' },
-  { value: 'scb', label: 'Standard Chartered', color: '#0f7ec6' },
-  { value: 'dbs', label: 'DBS Bank', color: '#e31837' },
-  { value: 'citibank', label: 'Citibank', color: '#1976d2' },
-  { value: 'ccb', label: 'China Construction Bank (Asia)', color: '#003d7a' },
-  { value: 'bea', label: 'Bank of East Asia', color: '#0066cc' },
-  { value: 'other', label: 'Other Bank', color: '#666666' }
+  { value: 'hsbc', key: 'hsbc', color: '#db0011' },
+  { value: 'hangseng', key: 'hangseng', color: '#0066cc' },
+  { value: 'aeon', key: 'aeon', color: '#0066cc' },
+  { value: 'boc', key: 'boc', color: '#8B0000' },
+  { value: 'icbc', key: 'icbc', color: '#c41e3a' },
+  { value: 'scb', key: 'scb', color: '#0f7ec6' },
+  { value: 'dbs', key: 'dbs', color: '#e31837' },
+  { value: 'citibank', key: 'citibank', color: '#1976d2' },
+  { value: 'ccb', key: 'ccb', color: '#003d7a' },
+  { value: 'bea', key: 'bea', color: '#0066cc' },
+  { value: 'other', key: 'other', color: '#666666' }
 ];
 
-const CARD_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
-];
-
-export default function AddCardPage({ onAddCard, onBack }) {
-  const [selectedBank, setSelectedBank] = useState('');
+export default function AddCardPage({ 
+  onAddCard, 
+  onBack,
+  getText, // 接收多語言函數
+  // 🔥 新增：邊緣滑動返回功能所需的完整props
+  creditCards = [],
+  paymentHistory = [],
+  notificationSettings = {},
+  userData = {},
+  currentLanguage = 'en',
+  onNavigate,
+  onUpdateCard,
+  onDeleteCard,
+  onMarkPayment,
+  onUpdateNotificationSettings
+}) {
+  const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
   const [dueDay, setDueDay] = useState('');
-  const [selectedColor, setSelectedColor] = useState(CARD_COLORS[0]);
-  const [showBankPicker, setShowBankPicker] = useState(false);
+  const [selectedBank, setSelectedBank] = useState('');
   const [errors, setErrors] = useState({});
+
+  // 🔥 Apple風格邊緣滑動返回功能：漸進式頁面過渡（完全修復版本）
+  const screenWidth = Dimensions.get('window').width;
+  const edgeWidth = 20; // 左邊緣感應區域寬度
+  const swipeThreshold = screenWidth * 0.3; // 30%的屏幕寬度觸發返回
+  
+  // 動畫值：控制頁面滑動位置
+  const [slideAnimation] = useState(new Animated.Value(0));
+  const [isSliding, setIsSliding] = useState(false);
+  
+  const panResponder = PanResponder.create({
+    // 🎯 只在左邊緣區域啟動手勢識別
+    onStartShouldSetPanResponder: (evt, gestureState) => {
+      const startX = evt.nativeEvent.pageX;
+      return startX <= edgeWidth;
+    },
+    
+    // 🎯 持續追蹤手勢
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      const startX = evt.nativeEvent.pageX;
+      const deltaX = gestureState.dx;
+      return startX <= edgeWidth && deltaX > 0.5;
+    },
+    
+    // 🎯 手勢開始時的初始化
+    onPanResponderGrant: (evt, gestureState) => {
+      const startX = evt.nativeEvent.pageX;
+      if (startX <= edgeWidth) {
+        setIsSliding(true);
+        slideAnimation.setValue(0);
+        console.log('🔥 新增卡片頁面Apple風格滑動開始');
+      }
+    },
+    
+    // 🎯 滑動過程中的實時更新
+    onPanResponderMove: (evt, gestureState) => {
+      if (!isSliding) return;
+      
+      const swipeDistance = Math.max(0, gestureState.dx);
+      const maxSlide = screenWidth * 0.8; // 最大滑動距離為屏幕寬度的80%
+      const clampedDistance = Math.min(swipeDistance, maxSlide);
+      
+      // 實時更新動畫值，讓頁面跟隨手指移動
+      slideAnimation.setValue(clampedDistance);
+      
+      console.log(`➕ 新增卡片頁面滑動進度: ${Math.round((clampedDistance / swipeThreshold) * 100)}%`);
+    },
+    
+    // 🎯 手勢結束時的判斷和動畫（修復抖動問題）
+    onPanResponderRelease: (evt, gestureState) => {
+      if (!isSliding) return;
+      
+      const swipeDistance = gestureState.dx;
+      const swipeVelocity = gestureState.vx;
+      
+      // 判斷是否應該執行返回操作
+      const shouldReturn = swipeDistance > swipeThreshold || swipeVelocity > 0.5;
+      
+      if (shouldReturn) {
+        // 🔥 修復抖動：執行平滑的返回動畫，完成後直接切換頁面
+        console.log('✅ 新增卡片頁面滑動距離足夠，執行返回動畫');
+        Animated.timing(slideAnimation, {
+          toValue: screenWidth,
+          duration: 180, // 快速完成，避免衝突
+          useNativeDriver: true, // 🔥 使用原生驅動器，提供更流暢的動畫
+        }).start(({ finished }) => {
+          // 🔥 關鍵修復：只有在動畫真正完成時才執行返回操作
+          if (finished) {
+            // 先執行返回操作，讓頁面切換開始
+            handleBackPress();
+            // 🔥 延遲重置動畫狀態，避免視覺抖動
+            setTimeout(() => {
+              setIsSliding(false);
+              slideAnimation.setValue(0);
+            }, 100);
+          }
+        });
+      } else {
+        // 返回原位動畫
+        console.log('↩️ 新增卡片頁面滑動距離不足，返回原位');
+        Animated.spring(slideAnimation, {
+          toValue: 0,
+          tension: 150,
+          friction: 10,
+          useNativeDriver: true, // 🔥 使用原生驅動器
+        }).start(() => {
+          setIsSliding(false);
+        });
+      }
+    },
+    
+    // 🎯 手勢被取消時的處理
+    onPanResponderTerminate: (evt, gestureState) => {
+      if (isSliding) {
+        Animated.spring(slideAnimation, {
+          toValue: 0,
+          tension: 150,
+          friction: 10,
+          useNativeDriver: true, // 🔥 使用原生驅動器
+        }).start(() => {
+          setIsSliding(false);
+        });
+      }
+    },
+  });
+
+  const formatCardNumber = (text) => {
+    // 移除所有非數字字符，只保留數字
+    const cleaned = text.replace(/\D/g, '');
+    
+    // 只返回數字，不需要格式化空格，因為只有4位數字
+    return cleaned;
+  };
+
+  // 獲取銀行顯示名稱（支援多語言）
+  const getBankDisplayName = (bankKey) => {
+    return getText(`addCard.banks.${bankKey}`) || bankKey;
+  };
+
+  // 獲取銀行儲存名稱（永遠使用英文，確保數據一致性）
+  const getBankStorageName = (bankKey) => {
+    const bankMap = {
+      'hsbc': 'HSBC',
+      'hangseng': 'Hang Seng Bank', 
+      'aeon': 'Aeon', 
+      'boc': 'Bank of China (Hong Kong)',
+      'icbc': 'ICBC (Asia)',
+      'scb': 'Standard Chartered',
+      'dbs': 'DBS Bank',
+      'citibank': 'Citibank',
+      'ccb': 'China Construction Bank (Asia)',
+      'bea': 'Bank of East Asia',
+      'other': 'Other Bank'
+    };
+    return bankMap[bankKey] || 'Other Bank';
+  };
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!selectedBank) {
-      newErrors.bank = 'Please select a bank';
+    if (!cardNumber.trim()) {
+      newErrors.cardNumber = getText('addCard.lastFourRequired');
+    } else if (cardNumber.length !== 4) {
+      newErrors.cardNumber = getText('addCard.exactlyFourDigits');
     }
 
     if (!cardName.trim()) {
-      newErrors.cardName = 'Please enter card name';
+      newErrors.cardName = getText('addCard.cardNameRequired');
     }
 
     if (!dueDay.trim()) {
-      newErrors.dueDay = 'Please enter due day';
+      newErrors.dueDay = getText('addCard.dueDateRequired');
     } else {
       const day = parseInt(dueDay);
       if (isNaN(day) || day < 1 || day > 31) {
-        newErrors.dueDay = 'Please enter a valid day (1-31)';
+        newErrors.dueDay = getText('addCard.validDay');
       }
+    }
+
+    if (!selectedBank) {
+      newErrors.bank = getText('addCard.selectBank');
     }
 
     setErrors(newErrors);
@@ -66,14 +223,25 @@ export default function AddCardPage({ onAddCard, onBack }) {
       const selectedBankInfo = HONG_KONG_BANKS.find(bank => bank.value === selectedBank);
       
       const newCard = {
+        number: cardNumber, // 直接儲存4位數字，不需要移除空格
         name: cardName.trim(),
-        bank: selectedBankInfo?.label || 'Other Bank',
+        bank: getBankStorageName(selectedBank), // 使用英文名稱儲存，確保數據一致性
         dueDay: dueDay.trim(),
-        color: selectedColor,
+        color: selectedBankInfo?.color || '#666666',
         notificationEnabled: true
       };
 
+      // 🔥 修復：直接調用回調函數，移除干擾性的彈窗通知
       onAddCard(newCard);
+    }
+  };
+
+  // 🔥 新增：處理返回按鈕和邊緣滑動的統一返回邏輯
+  const handleBackPress = () => {
+    if (onBack && typeof onBack === 'function') {
+      onBack();
+    } else {
+      console.warn('AddCardPage: onBack prop is missing or not a function');
     }
   };
 
@@ -83,213 +251,212 @@ export default function AddCardPage({ onAddCard, onBack }) {
     }
   };
 
-  const getBankColor = (bankValue) => {
-    const bank = HONG_KONG_BANKS.find(b => b.value === bankValue);
-    return bank ? bank.color : '#666666';
-  };
-
-  const selectedBankInfo = HONG_KONG_BANKS.find(bank => bank.value === selectedBank);
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Add New Card</Text>
-        <View style={styles.placeholder} />
+    <View style={styles.rootContainer} {...panResponder.panHandlers}>
+      {/* 🔥 背景層：完整的 MyCards Page 渲染 */}
+      <View style={styles.backgroundLayer}>
+        <MyCardsPage
+          creditCards={creditCards}
+          paymentHistory={paymentHistory}
+          notificationSettings={notificationSettings}
+          userData={userData}
+          onBack={() => {}} // 背景層不需要實際的返回功能
+          onNavigate={onNavigate || (() => {})}
+          onUpdateCard={onUpdateCard || (() => {})}
+          onDeleteCard={onDeleteCard || (() => {})}
+          onMarkPayment={onMarkPayment || (() => {})}
+          onUpdateNotificationSettings={onUpdateNotificationSettings || (() => {})}
+          getText={getText}
+          currentLanguage={currentLanguage}
+        />
       </View>
+      
+      {/* 🔥 前景層：當前頁面內容，支持滑動動畫 */}
+      <Animated.View 
+        style={[
+          styles.foregroundLayer,
+          {
+            transform: [{
+              translateX: slideAnimation
+            }]
+          }
+        ]}
+      >
+        <SafeAreaView style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={handleBackPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={24} color="#000000" />
+            </TouchableOpacity>
+            <Text style={styles.title}>{getText('addCard.title')}</Text>
+            <View style={styles.placeholder} />
+          </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Bank Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Bank</Text>
-          <TouchableOpacity
-            style={[
-              styles.bankSelector,
-              errors.bank && styles.errorInput
-            ]}
-            onPress={() => setShowBankPicker(!showBankPicker)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              styles.bankSelectorText,
-              selectedBank ? styles.selectedBankText : styles.placeholderText
-            ]}>
-              {selectedBankInfo ? selectedBankInfo.label : 'Choose your bank'}
-            </Text>
-            <Text style={styles.dropdownIcon}>▼</Text>
-          </TouchableOpacity>
-          {errors.bank && <Text style={styles.errorText}>{errors.bank}</Text>}
-
-          {/* Bank Options */}
-          {showBankPicker && (
-            <View style={styles.bankOptions}>
-              {HONG_KONG_BANKS.map((bank, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.bankOption}
-                  onPress={() => {
-                    setSelectedBank(bank.value);
-                    setShowBankPicker(false);
-                    clearError('bank');
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.formContainer}>
+              {/* Card Number - 修改為只需要最後4位數字 */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>{getText('addCard.lastFourDigits')}</Text>
+                <TextInput
+                  style={[styles.input, errors.cardNumber && styles.inputError]}
+                  placeholder="1234"
+                  placeholderTextColor="#999999"
+                  value={cardNumber}
+                  onChangeText={(text) => {
+                    setCardNumber(formatCardNumber(text));
+                    clearError('cardNumber');
                   }}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.bankIndicator, { backgroundColor: bank.color }]} />
-                  <Text style={styles.bankOptionText}>{bank.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+                  keyboardType="numeric"
+                  maxLength={4} // 只允許4位數字
+                />
+                {errors.cardNumber && (
+                  <Text style={styles.errorText}>{errors.cardNumber}</Text>
+                )}
+              </View>
 
-        {/* Card Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Card Details</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Card Name</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                errors.cardName && styles.errorInput
-              ]}
-              placeholder="e.g., HSBC Red Card"
-              placeholderTextColor="#666666"
-              value={cardName}
-              onChangeText={(text) => {
-                setCardName(text);
-                clearError('cardName');
-              }}
-            />
-            {errors.cardName && <Text style={styles.errorText}>{errors.cardName}</Text>}
-          </View>
+              {/* Card Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>{getText('addCard.cardName')}</Text>
+                <TextInput
+                  style={[styles.input, errors.cardName && styles.inputError]}
+                  placeholder={getText('addCard.cardNamePlaceholder')}
+                  placeholderTextColor="#999999"
+                  value={cardName}
+                  onChangeText={(text) => {
+                    setCardName(text);
+                    clearError('cardName');
+                  }}
+                />
+                {errors.cardName && (
+                  <Text style={styles.errorText}>{errors.cardName}</Text>
+                )}
+              </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Payment Due Day</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                errors.dueDay && styles.errorInput
-              ]}
-              placeholder="Day of month (1-31)"
-              placeholderTextColor="#666666"
-              value={dueDay}
-              onChangeText={(text) => {
-                setDueDay(text);
-                clearError('dueDay');
-              }}
-              keyboardType="numeric"
-              maxLength={2}
-            />
-            {errors.dueDay && <Text style={styles.errorText}>{errors.dueDay}</Text>}
-            <Text style={styles.helperText}>
-              Enter the day of the month when payment is due (e.g., 15 for 15th of each month)
-            </Text>
-          </View>
-        </View>
+              {/* Due Date */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>{getText('addCard.dueDate')}</Text>
+                <View style={styles.dueDateContainer}>
+                  <TextInput
+                    style={[styles.dueDateInput, errors.dueDay && styles.inputError]}
+                    placeholder="DD"
+                    placeholderTextColor="#999999"
+                    value={dueDay}
+                    onChangeText={(text) => {
+                      setDueDay(text);
+                      clearError('dueDay');
+                    }}
+                    keyboardType="numeric"
+                    maxLength={2}
+                  />
+                  <Text style={styles.dueDateText}>{getText('addCard.ofEachMonth')}</Text>
+                </View>
+                {errors.dueDay && (
+                  <Text style={styles.errorText}>{errors.dueDay}</Text>
+                )}
+              </View>
 
-        {/* Color Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Card Color</Text>
-          <View style={styles.colorGrid}>
-            {CARD_COLORS.map((color, index) => (
+              {/* Issuing Bank */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>{getText('addCard.issuingBank')}</Text>
+                <View style={styles.banksGrid}>
+                  {HONG_KONG_BANKS.map((bank, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.bankOption,
+                        selectedBank === bank.value && styles.bankOptionSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedBank(bank.value);
+                        clearError('bank');
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.bankOptionText,
+                        selectedBank === bank.value && styles.bankOptionTextSelected
+                      ]}>
+                        {getBankDisplayName(bank.key)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {errors.bank && (
+                  <Text style={styles.errorText}>{errors.bank}</Text>
+                )}
+              </View>
+
+              {/* Save Button */}
               <TouchableOpacity
-                key={index}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color },
-                  selectedColor === color && styles.selectedColor
-                ]}
-                onPress={() => setSelectedColor(color)}
+                style={styles.saveButton}
+                onPress={handleSubmit}
                 activeOpacity={0.8}
               >
-                {selectedColor === color && (
-                  <Text style={styles.colorCheckmark}>✓</Text>
-                )}
+                <Text style={styles.saveButtonText}>{getText('addCard.save')}</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Card Preview */}
-        {(cardName || selectedBank) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preview</Text>
-            <View style={[
-              styles.cardPreview,
-              { 
-                backgroundColor: selectedColor,
-                borderLeftColor: getBankColor(selectedBank)
-              }
-            ]}>
-              <View style={styles.previewContent}>
-                <Text style={styles.previewCardName}>
-                  {cardName || 'Card Name'}
-                </Text>
-                <Text style={styles.previewBankName}>
-                  {selectedBankInfo?.label || 'Bank Name'}
-                </Text>
-                <Text style={styles.previewDueDate}>
-                  Due: {dueDay || 'XX'}th of each month
-                </Text>
-              </View>
             </View>
-          </View>
-        )}
-
-        {/* Submit Button */}
-        <View style={styles.submitSection}>
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleSubmit}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.submitButtonText}>Add Credit Card</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
-    </SafeAreaView>
+          </ScrollView>
+        </SafeAreaView>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // 🔥 Apple風格邊緣滑動的新增樣式
+  rootContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  backgroundLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#F5F5F5',
+  },
+  foregroundLayer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60, // 調整位置避免動態島遮擋
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#E0E0E0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+    padding: 8,
+    marginRight: 8,
   },
   title: {
-    color: '#FFFFFF',
+    flex: 1,
     fontSize: 20,
     fontWeight: '600',
+    color: '#000000',
+    textAlign: 'center',
   },
   placeholder: {
     width: 40,
@@ -297,171 +464,92 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  bankSelector: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  bankSelectorText: {
-    fontSize: 16,
-    flex: 1,
-  },
-  selectedBankText: {
-    color: '#FFFFFF',
-  },
-  placeholderText: {
-    color: '#666666',
-  },
-  dropdownIcon: {
-    color: '#666666',
-    fontSize: 12,
-  },
-  bankOptions: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-    maxHeight: 200,
-  },
-  bankOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-  },
-  bankIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  bankOptionText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  formContainer: {
+    padding: 16,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  inputLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333333',
     marginBottom: 8,
   },
-  textInput: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    color: '#FFFFFF',
+    paddingVertical: 12,
     fontSize: 16,
+    color: '#000000',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#E0E0E0',
   },
-  helperText: {
-    color: '#999999',
-    fontSize: 12,
-    marginTop: 4,
-    lineHeight: 16,
+  inputError: {
+    borderColor: '#F44336',
   },
-  colorGrid: {
+  dueDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dueDateInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#000000',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    width: 80,
+    textAlign: 'center',
+  },
+  dueDateText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#666666',
+  },
+  banksGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    marginHorizontal: -4,
   },
-  colorOption: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'transparent',
+  bankOption: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    margin: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  selectedColor: {
-    borderColor: '#FFFFFF',
+  bankOptionSelected: {
+    backgroundColor: '#000000',
+    borderColor: '#000000',
   },
-  colorCheckmark: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  cardPreview: {
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 4,
-    minHeight: 120,
-    justifyContent: 'center',
-  },
-  previewContent: {
-    flex: 1,
-  },
-  previewCardName: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  previewBankName: {
-    color: '#FFFFFF',
+  bankOptionText: {
     fontSize: 14,
-    marginBottom: 4,
-    opacity: 0.9,
+    color: '#333333',
   },
-  previewDueDate: {
+  bankOptionTextSelected: {
     color: '#FFFFFF',
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  submitSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  errorInput: {
-    borderColor: '#FF3B30',
   },
   errorText: {
-    color: '#FF3B30',
+    color: '#F44336',
     fontSize: 12,
     marginTop: 4,
   },
-  bottomSpacing: {
-    height: 20,
+  saveButton: {
+    backgroundColor: '#000000',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

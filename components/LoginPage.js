@@ -1,5 +1,5 @@
-// components/LoginPage.js - 修復版，確保正確處理登入和導航
-import React, { useState } from 'react';
+// components/LoginPage.js - 簡化版登入頁面（移除Google登入）
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,327 +8,495 @@ import {
   SafeAreaView,
   TextInput,
   Alert,
-  StatusBar
+  Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+  ActivityIndicator
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { authService } from '../firebase';
 
-export default function LoginPage({ onLogin, onBack }) {
+export default function LoginPage({ onLogin, onBack, onNavigateToSignUp, onNavigateToForgotPassword, onNavigate, getText }) {
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const passwordInputRef = useRef(null);
 
-  const handleGmailLogin = () => {
+  // 處理鍵盤收回功能
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
+  // 🔥 處理真正的Email登入
+  const handleEmailLogin = async () => {
+    // 驗證輸入
     if (!email.trim()) {
-      Alert.alert('錯誤', '請輸入電子郵件地址');
+      Alert.alert(
+        getText ? getText('login.inputError') : '輸入錯誤', 
+        getText ? getText('login.pleaseEnterEmail') : '請輸入您的電子郵件地址'
+      );
       return;
     }
 
-    if (!name.trim()) {
-      Alert.alert('錯誤', '請輸入您的姓名');
+    if (!password.trim()) {
+      Alert.alert(
+        getText ? getText('login.inputError') : '輸入錯誤', 
+        getText ? getText('login.pleaseEnterPassword') : '請輸入您的密碼'
+      );
       return;
     }
 
     // 簡單的電子郵件格式驗證
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('錯誤', '請輸入有效的電子郵件地址');
+      Alert.alert(
+        getText ? getText('login.formatError') : '格式錯誤', 
+        getText ? getText('login.pleaseEnterValidEmail') : '請輸入有效的電子郵件地址'
+      );
       return;
     }
 
-    console.log('Gmail login attempted'); // 調試用
+    setIsLoading(true);
     
-    if (onLogin && typeof onLogin === 'function') {
-      onLogin('gmail', {
-        email: email.trim(),
-        name: name.trim()
-      });
-    } else {
-      console.error('onLogin function not provided');
+    try {
+      const result = await authService.signInWithEmail(email, password);
+      
+      if (result.success) {
+        // 登入成功
+        const userData = {
+          email: result.user.email,
+          name: result.userData.username || email.split('@')[0],
+          uid: result.user.uid,
+          loginMethod: 'email',
+          isLoggedIn: true,
+          emailVerified: true
+        };
+        
+        console.log('✅ Email登入成功:', userData.email);
+        
+        if (onLogin && typeof onLogin === 'function') {
+          onLogin(userData);
+        }
+      } else if (result.needsVerification) {
+        // 需要驗證郵件
+        Alert.alert(
+          '需要驗證',
+          result.error,
+          [
+            {
+              text: '重新發送驗證郵件',
+              onPress: async () => {
+                const resendResult = await authService.resendVerificationEmail();
+                if (resendResult.success) {
+                  Alert.alert('成功', '驗證郵件已重新發送，請檢查您的郵箱');
+                }
+              }
+            },
+            {
+              text: '確定',
+              style: 'cancel'
+            }
+          ]
+        );
+      } else {
+        // 登入失敗
+        Alert.alert(
+          getText ? getText('login.loginError') : '登入錯誤',
+          result.error || '登入失敗，請檢查您的電子郵件和密碼'
+        );
+      }
+    } catch (error) {
+      console.error('Email登入錯誤:', error);
+      Alert.alert(
+        getText ? getText('login.loginError') : '登入錯誤',
+        '登入過程中發生錯誤，請稍後再試'
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleAppleLogin = () => {
-    if (!name.trim()) {
-      Alert.alert('錯誤', '請輸入您的姓名');
-      return;
-    }
-
-    console.log('Apple login attempted'); // 調試用
-    
-    if (onLogin && typeof onLogin === 'function') {
-      onLogin('apple', {
-        email: 'user@icloud.com', // Apple ID 模擬
-        name: name.trim()
-      });
-    } else {
-      console.error('onLogin function not provided');
+  // 🔥 處理忘記密碼導航
+  const handleForgotPasswordNavigation = () => {
+    if (onNavigateToForgotPassword && typeof onNavigateToForgotPassword === 'function') {
+      onNavigateToForgotPassword();
     }
   };
 
-  const handleSMSLogin = () => {
-    if (!phone.trim()) {
-      Alert.alert('錯誤', '請輸入手機號碼');
-      return;
-    }
-
-    if (!name.trim()) {
-      Alert.alert('錯誤', '請輸入您的姓名');
-      return;
-    }
-
-    // 簡單的手機號碼格式驗證（香港）
-    const phoneRegex = /^[5-9]\d{7}$/;
-    if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
-      Alert.alert('錯誤', '請輸入有效的香港手機號碼');
-      return;
-    }
-
-    console.log('SMS login attempted'); // 調試用
-    
-    if (onLogin && typeof onLogin === 'function') {
-      onLogin('sms', {
-        phone: phone.trim(),
-        name: name.trim(),
-        email: '' // SMS 登入不需要 email
-      });
-    } else {
-      console.error('onLogin function not provided');
+  // 處理註冊跳轉
+  const handleSignUpNavigation = () => {
+    if (onNavigateToSignUp && typeof onNavigateToSignUp === 'function') {
+      onNavigateToSignUp();
     }
   };
 
+  // 處理返回按鈕
   const handleBackPress = () => {
-    console.log('Back button pressed'); // 調試用
     if (onBack && typeof onBack === 'function') {
       onBack();
-    } else {
-      console.error('onBack function not provided');
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={handleBackPress}
-          activeOpacity={0.8}
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Welcome</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <View style={styles.content}>
-        {/* Welcome Message */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Let's get started</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Choose your preferred sign-in method
-          </Text>
-        </View>
-
-        {/* Input Fields */}
-        <View style={styles.inputSection}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Your Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
-              placeholderTextColor="#666666"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email (for Gmail)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="your.email@gmail.com"
-              placeholderTextColor="#666666"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone (for SMS)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="5xxx xxxx (Hong Kong)"
-              placeholderTextColor="#666666"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-          </View>
-        </View>
-
-        {/* Login Options */}
-        <View style={styles.loginSection}>
-          <TouchableOpacity 
-            style={[styles.loginButton, styles.gmailButton]}
-            onPress={handleGmailLogin}
-            activeOpacity={0.8}
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.loginIcon}>📧</Text>
-            <Text style={styles.loginText}>Continue with Gmail</Text>
-          </TouchableOpacity>
+            {/* 返回按鈕 */}
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={handleBackPress}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="arrow-back" size={24} color="#666666" />
+            </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.loginButton, styles.appleButton]}
-            onPress={handleAppleLogin}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.loginIcon}>🍎</Text>
-            <Text style={styles.loginText}>Continue with Apple ID</Text>
-          </TouchableOpacity>
+            {/* 插圖和標題區域 */}
+            <View style={styles.headerSection}>
+              <Image
+                source={require('../assets/login_illustration.png')}
+                style={styles.illustration}
+                resizeMode="contain"
+              />
+              <Text style={styles.appTitle}>
+                {getText ? getText('login.title') : 'CardReminder'}
+              </Text>
+              <Text style={styles.welcomeText}>
+                {getText ? getText('login.welcome') : '歡迎回來！請登入您的帳戶'}
+              </Text>
+            </View>
 
-          <TouchableOpacity 
-            style={[styles.loginButton, styles.smsButton]}
-            onPress={handleSMSLogin}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.loginIcon}>📱</Text>
-            <Text style={styles.loginText}>Continue with SMS</Text>
-          </TouchableOpacity>
-        </View>
+            {/* 郵件輸入區域 */}
+            <View style={styles.inputSection}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {getText ? getText('login.email') : 'Email'}
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder={getText ? getText('login.enterEmail') : 'Enter your email'}
+                  placeholderTextColor="#999999"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  editable={!isLoading}
+                />
+              </View>
 
-        {/* Footer */}
-        <View style={styles.footerSection}>
-          <Text style={styles.footerText}>
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </Text>
-        </View>
-      </View>
-    </SafeAreaView>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {getText ? getText('login.password') : 'Password'}
+                </Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    ref={passwordInputRef}
+                    style={styles.passwordInput}
+                    placeholder={getText ? getText('login.enterPassword') : 'Enter your password'}
+                    placeholderTextColor="#999999"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!isPasswordVisible}
+                    returnKeyType="done"
+                    onSubmitEditing={handleEmailLogin}
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordToggle}
+                    onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons 
+                      name={isPasswordVisible ? 'visibility' : 'visibility-off'} 
+                      size={20} 
+                      color="#999999" 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* 🔥 忘記密碼連結 */}
+            <View style={styles.forgotPasswordSection}>
+              <TouchableOpacity onPress={handleForgotPasswordNavigation}>
+                <Text style={styles.forgotPasswordText}>
+                  {getText ? getText('forgotPassword.title') : '忘記密碼？'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 登入按鈕 */}
+            <TouchableOpacity
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+              onPress={handleEmailLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              {isLoading ? (
+                <View style={styles.loginButtonContent}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.loginButtonText}>
+                    {getText ? getText('login.loggingIn') : '登入中...'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.loginButtonContent}>
+                  <MaterialIcons name="login" size={20} color="#FFFFFF" />
+                  <Text style={styles.loginButtonText}>
+                    {getText ? getText('login.loginButton') : '登入'}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+{/* 🔥 新增：電話登入選項 */}
+<View style={styles.phoneLoginSection}>
+  <View style={styles.dividerContainer}>
+    <View style={styles.dividerLine} />
+    <Text style={styles.dividerText}>或</Text>
+    <View style={styles.dividerLine} />
+  </View>
+  
+  <TouchableOpacity
+    style={styles.phoneLoginButton}
+    onPress={() => {
+      // 這裡需要通過props傳遞導航函數
+      if (typeof onNavigate === 'function') {
+        onNavigate('PhoneLogin');
+      }
+    }}
+    activeOpacity={0.8}
+  >
+    <View style={styles.phoneLoginButtonContent}>
+      <MaterialIcons name="phone-android" size={20} color="#4A90E2" />
+      <Text style={styles.phoneLoginButtonText}>
+        使用手機號碼登入
+      </Text>
+    </View>
+  </TouchableOpacity>
+</View>
+
+            {/* 註冊連結 */}
+            <View style={styles.signUpSection}>
+              <Text style={styles.signUpText}>
+                {getText ? getText('login.noAccount') : "還沒有帳戶？"}{' '}
+                <Text style={styles.signUpLink} onPress={handleSignUpNavigation}>
+                  {getText ? getText('login.signUpNow') : '立即註冊'}
+                </Text>
+              </Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#F8F9FA',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  backIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-  },
-  welcomeSection: {
+  headerSection: {
+    alignItems: 'center',
     marginBottom: 40,
   },
-  welcomeTitle: {
-    color: '#FFFFFF',
-    fontSize: 28,
+  illustration: {
+    width: 280,
+    height: 200,
+    marginBottom: 24,
+  },
+  appTitle: {
+    fontSize: 32,
     fontWeight: 'bold',
+    color: '#2C3E50',
     marginBottom: 8,
   },
-  welcomeSubtitle: {
-    color: '#999999',
+  welcomeText: {
     fontSize: 16,
-    lineHeight: 24,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   inputSection: {
-    marginBottom: 32,
+    marginBottom: 16,
   },
   inputGroup: {
     marginBottom: 20,
   },
   inputLabel: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    color: '#2C3E50',
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: '#2a2a2a',
+  textInput: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#FFFFFF',
+    paddingVertical: 16,
     fontSize: 16,
+    color: '#2C3E50',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#E0E0E0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
-  loginSection: {
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: '#2C3E50',
+  },
+  passwordToggle: {
+    padding: 16,
+  },
+  forgotPasswordSection: {
+    alignItems: 'flex-end',
     marginBottom: 32,
   },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#4A90E2',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
   loginButton: {
+    backgroundColor: '#4A90E2',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginBottom: 32,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#999999',
+    elevation: 1,
+  },
+  loginButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    marginBottom: 16,
-    borderWidth: 1,
   },
-  gmailButton: {
-    backgroundColor: '#2a2a2a',
-    borderColor: '#DB4437',
-  },
-  appleButton: {
-    backgroundColor: '#2a2a2a',
-    borderColor: '#FFFFFF',
-  },
-  smsButton: {
-    backgroundColor: '#2a2a2a',
-    borderColor: '#4CAF50',
-  },
-  loginIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  loginText: {
-    color: '#FFFFFF',
+  loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
   },
-  footerSection: {
-    marginTop: 'auto',
-    paddingBottom: 20,
+  signUpSection: {
+    alignItems: 'center',
   },
-  footerText: {
+  signUpText: {
+    fontSize: 14,
     color: '#666666',
-    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 18,
   },
+  signUpLink: {
+    color: '#4A90E2',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  phoneLoginSection: {
+  marginBottom: 24,
+},
+dividerContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 16,
+},
+dividerLine: {
+  flex: 1,
+  height: 1,
+  backgroundColor: '#E0E0E0',
+},
+dividerText: {
+  marginHorizontal: 16,
+  fontSize: 14,
+  color: '#999999',
+  fontWeight: '500',
+},
+phoneLoginButton: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  paddingVertical: 16,
+  paddingHorizontal: 20,
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+  elevation: 1,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.05,
+  shadowRadius: 2,
+},
+phoneLoginButtonContent: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+phoneLoginButtonText: {
+  marginLeft: 12,
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#2C3E50',
+},
 });

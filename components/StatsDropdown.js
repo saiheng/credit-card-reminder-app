@@ -1,4 +1,4 @@
-// components/StatsDropdown.js - 統計功能下拉選單
+// components/StatsDropdown.js - 改進版，使用專業圖標
 import React from 'react';
 import {
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function StatsDropdown({ 
   visible, 
@@ -47,7 +48,7 @@ export default function StatsDropdown({
             onPress={handleHistoryPress}
             activeOpacity={0.8}
           >
-            <Text style={styles.optionIcon}>📊</Text>
+            <MaterialIcons name="history" size={20} color="#007AFF" />
             <Text style={styles.optionText}>Payment History</Text>
           </TouchableOpacity>
           
@@ -58,7 +59,7 @@ export default function StatsDropdown({
             onPress={handleAchievementsPress}
             activeOpacity={0.8}
           >
-            <Text style={styles.optionIcon}>🏆</Text>
+            <MaterialIcons name="emoji-events" size={20} color="#FF9800" />
             <Text style={styles.optionText}>Achievements</Text>
           </TouchableOpacity>
         </View>
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   dropdown: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#FFFFFF', // 改為白色背景，與新設計一致
     borderRadius: 16,
     overflow: 'hidden',
     minWidth: 200,
@@ -86,9 +87,11 @@ const styles = StyleSheet.create({
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   option: {
     flexDirection: 'row',
@@ -96,18 +99,15 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
   },
-  optionIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
   optionText: {
-    color: '#FFFFFF',
+    color: '#333333', // 改為深色文字，與白色背景搭配
     fontSize: 16,
     fontWeight: '500',
+    marginLeft: 12,
   },
   separator: {
     height: 1,
-    backgroundColor: '#333333',
+    backgroundColor: '#F0F0F0', // 更柔和的分隔線
     marginHorizontal: 20,
   },
 });
