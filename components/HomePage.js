@@ -20,7 +20,80 @@ import Svg, { Path } from 'react-native-svg';
 import StatsDropdown from './StatsDropdown';
 
 const { width } = Dimensions.get('window');
+// 🔥 新增：香港公眾假期數據
+// 🔥 修正：支援多語言的香港公眾假期數據
+// 🔥 修正版：完全重新設計的公眾假期多語言系統
+const getHongKongHolidays = (year, currentLanguage, getText) => {
+  // 🔥 新的翻譯獲取邏輯：使用正確的key映射
+  const getHolidayName = (holidayKey) => {
+    // 先嘗試從語言文件獲取翻譯
+    if (getText) {
+      const translation = getText(`home.holidays.${holidayKey}`);
+      if (translation) {
+        console.log(`✅ 假期翻譯成功: ${holidayKey} -> ${translation}`);
+        return translation;
+      }
+    }
+    
+    // 如果語言文件沒有翻譯，使用後備翻譯
+    const fallbackTranslations = {
+      'NewYearsDay': currentLanguage === 'zh-TW' ? '元旦' : 'New Year\'s Day',
+      'LabourDay': currentLanguage === 'zh-TW' ? '勞動節' : 'Labour Day',
+      'HKSAREstablishmentDay': currentLanguage === 'zh-TW' ? '香港特別行政區成立紀念日' : 'HKSAR Establishment Day',
+      'NationalDay': currentLanguage === 'zh-TW' ? '國慶日' : 'National Day',
+      'ChristmasDay': currentLanguage === 'zh-TW' ? '聖誕節' : 'Christmas Day',
+      'BoxingDay': currentLanguage === 'zh-TW' ? '節禮日' : 'Boxing Day',
+      'LunarNewYearDay1': currentLanguage === 'zh-TW' ? '農曆新年初一' : 'Lunar New Year Day 1',
+      'LunarNewYearDay2': currentLanguage === 'zh-TW' ? '農曆新年初二' : 'Lunar New Year Day 2',
+      'LunarNewYearDay3': currentLanguage === 'zh-TW' ? '農曆新年初三' : 'Lunar New Year Day 3'
+    };
+    
+    const result = fallbackTranslations[holidayKey] || holidayKey;
+    console.log(`🔄 假期後備翻譯: ${holidayKey} -> ${result}`);
+    return result;
+  };
 
+  console.log(`🎌 生成${year}年香港公眾假期，語言: ${currentLanguage}`);
+
+  // 建立假期對象
+  const holidays = {};
+  
+  // 固定日期的公眾假期
+  holidays[`${year}-01-01`] = getHolidayName('NewYearsDay');
+  holidays[`${year}-05-01`] = getHolidayName('LabourDay');
+  holidays[`${year}-07-01`] = getHolidayName('HKSAREstablishmentDay');
+  holidays[`${year}-10-01`] = getHolidayName('NationalDay');
+  holidays[`${year}-12-25`] = getHolidayName('ChristmasDay');
+  holidays[`${year}-12-26`] = getHolidayName('BoxingDay');
+  
+  // 農曆新年（每年日期不同）
+  if (year === 2024) {
+    holidays[`${year}-02-10`] = getHolidayName('LunarNewYearDay1');
+    holidays[`${year}-02-11`] = getHolidayName('LunarNewYearDay2');
+    holidays[`${year}-02-12`] = getHolidayName('LunarNewYearDay3');
+  } else if (year === 2025) {
+    holidays[`${year}-01-29`] = getHolidayName('LunarNewYearDay1');
+    holidays[`${year}-01-30`] = getHolidayName('LunarNewYearDay2');
+    holidays[`${year}-01-31`] = getHolidayName('LunarNewYearDay3');
+  } else if (year === 2026) {
+    holidays[`${year}-02-17`] = getHolidayName('LunarNewYearDay1');
+    holidays[`${year}-02-18`] = getHolidayName('LunarNewYearDay2');
+    holidays[`${year}-02-19`] = getHolidayName('LunarNewYearDay3');
+  }
+  
+  console.log(`✅ 成功生成${Object.keys(holidays).length}個假期`);
+  return holidays;
+};
+// 🔥 修正：支援多語言的公眾假期檢查函數
+const isPublicHoliday = (date, currentLanguage, getText) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateString = `${year}-${month}-${day}`;
+  
+  const holidays = getHongKongHolidays(year, currentLanguage, getText);
+  return holidays[dateString] || null;
+};
 export default function HomePage({ 
   userData = { name: 'User', avatar: null }, 
   creditCards = [], 
@@ -213,13 +286,31 @@ export default function HomePage({
         shouldShow: true,
         billInfo: billStatus
       };
-    } else {
-      // 未來到期
-      const daysLeftText = currentLanguage === 'zh-TW' ? 
-        `剩餘${daysDiff}天` : 
-        `${daysDiff} ${getText('home.daysLeft') || 'days left'}`;
+} else {
+      // 🔥 強化版：更精確的當月/未來月份判斷
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      const billIsThisMonth = billStatus.billYear === currentYear && billStatus.billMonth === currentMonth;
       
-      console.log(`✏️ 未來到期: ${daysLeftText}`);
+      console.log(`📅 詳細分析: 今天=${currentYear}-${currentMonth + 1}, 帳單=${billStatus.billYear}-${billStatus.billMonth + 1}, 當月=${billIsThisMonth}, 剩餘天數=${daysDiff}`);
+      
+      let daysLeftText;
+      if (billIsThisMonth && daysDiff <= 31) {
+        // 🔥 加強條件：當月到期且天數合理時顯示"剩餘x天"
+        daysLeftText = currentLanguage === 'zh-TW' ? 
+          `剩餘${daysDiff}天` : 
+          `${daysDiff} ${getText('home.daysLeft') || 'days left'}`;
+        console.log(`✅ 當月剩餘天數顯示: ${daysLeftText}`);
+      } else {
+        // 下個月或更遠的月份：顯示"即將到期"
+        daysLeftText = currentLanguage === 'zh-TW' ? 
+          '即將到期' : 
+          'Upcoming Due';
+        console.log(`📋 未來月份顯示: ${daysLeftText}`);
+      }
+      
+      console.log(`✏️ 最終顯示文字: ${daysLeftText} (當月: ${billIsThisMonth}, 天數: ${daysDiff})`);
       return {
         type: 'upcoming',
         days: daysDiff,
@@ -232,7 +323,7 @@ export default function HomePage({
         billInfo: billStatus
       };
     }
-  };
+    };
 
   // 🔥 日曆顯示的狀態計算（針對特定日期）
   const calculatePaymentStatusForCalendar = (card, targetDate) => {
@@ -351,88 +442,146 @@ export default function HomePage({
     return [];
   };
 
-  // 🔥 優化版日曆滑動手勢響應器：移除所有提示相關邏輯
+// 🔥 極靈敏日曆滑動手勢響應器：一觸即發，無縫銜接
   const calendarPanResponder = PanResponder.create({
-    // 檢測是否應該開始處理手勢
+// 🔥 全包容開始條件：支援各種觸控習慣
     onMoveShouldSetPanResponder: (evt, gestureState) => {
-      // 🔥 更寬鬆的滑動開始條件：降低門檻讓用戶更容易開始滑動
-      const minSwipeDistance = 2; // 從5像素降低到2像素
       const horizontal = Math.abs(gestureState.dx);
       const vertical = Math.abs(gestureState.dy);
-  
-      // 🔥 更寬鬆的方向判斷：水平移動只需要達到垂直移動的70%即可
-      return horizontal > minSwipeDistance && horizontal > vertical * 0.7;
-    },
-    
-    // 開始手勢處理
+      
+      // 🔥 多重判斷：支援不同的開始方式
+      const isLightTouch = horizontal > 0.5;  // 輕觸判斷
+      const isMediumSwipe = horizontal > 2;   // 中等滑動判斷
+      const isHeavyDrag = horizontal > 5;     // 大力拖曳判斷
+      
+      // 🔥 方向判斷：根據滑動強度調整方向要求
+      let directionOk = false;
+      
+      if (isHeavyDrag) {
+        // 大力拖曳：更寬鬆的方向要求
+        directionOk = horizontal > vertical * 0.3;
+      } else if (isMediumSwipe) {
+        // 中等滑動：標準方向要求
+        directionOk = horizontal > vertical * 0.5;
+      } else if (isLightTouch) {
+        // 輕觸：嚴格的方向要求
+        directionOk = horizontal > vertical * 0.7;
+      }
+      
+      return (isLightTouch || isMediumSwipe || isHeavyDrag) && directionOk;
+    },    
+    // 🔥 立即響應：手勢一開始就準備動畫
     onPanResponderGrant: (evt, gestureState) => {
       calendarSlideAnimation.setValue(0);
-      console.log('🔥 日曆滑動開始');
+      console.log('🔥 極靈敏日曆滑動開始');
     },
     
-    // 手勢移動過程中
+// 🔥 智能跟隨：支援各種滑動幅度
     onPanResponderMove: (evt, gestureState) => {
-      // 實時更新動畫值，跟隨手指移動
       const moveDistance = gestureState.dx;
-      const maxDistance = width * 0.3; // 最大滑動距離為螢幕寬度的30%
+      
+      // 🔥 動態最大距離：根據滑動幅度調整
+      let maxDistance;
+      const absMoveDistance = Math.abs(moveDistance);
+      
+      if (absMoveDistance > width * 0.5) {
+        // 大幅度滑動：允許更大的移動範圍
+        maxDistance = width * 1.2;
+      } else if (absMoveDistance > width * 0.2) {
+        // 中等滑動：標準移動範圍
+        maxDistance = width * 0.8;
+      } else {
+        // 小幅度滑動：較小的移動範圍
+        maxDistance = width * 0.6;
+      }
+      
       const clampedDistance = Math.max(-maxDistance, Math.min(maxDistance, moveDistance));
       
+      // 🔥 實時更新動畫，提供視覺反饋
       calendarSlideAnimation.setValue(clampedDistance);
-    },
-    
-    // 手勢結束處理
+    },    
+// 🔥 全方位滑動支援：支援各種滑動習慣
     onPanResponderRelease: (evt, gestureState) => {
       const swipeDistance = Math.abs(gestureState.dx);
       const swipeVelocity = Math.abs(gestureState.vx);
-      const threshold = width * 0.08; // 🔥 更容易觸發：從15%降低到8%，讓滑動更敏感
+      const swipeTime = gestureState.dt; // 滑動持續時間
       
-      console.log('👋 日曆滑動結束', {
+      // 🔥 多重判斷門檻：支援不同的滑動習慣
+      const smallSwipeThreshold = width * 0.03;  // 輕微滑動：3%
+      const mediumSwipeThreshold = width * 0.15; // 中等滑動：15%
+      const largeSwipeThreshold = width * 0.4;   // 大力滑動：40%
+      
+      console.log('👋 全方位滑動檢測', {
         distance: swipeDistance,
         velocity: swipeVelocity,
-        direction: gestureState.dx > 0 ? 'right' : 'left'
+        time: swipeTime,
+        direction: gestureState.dx > 0 ? 'right' : 'left',
+        小滑動門檻: smallSwipeThreshold,
+        中滑動門檻: mediumSwipeThreshold,
+        大滑動門檻: largeSwipeThreshold
       });
       
-      // 判斷是否應該切換月份
-      // 🔥 更容易切換：降低速度要求，讓快速輕滑也能切換
-      const shouldChange = swipeDistance > threshold || swipeVelocity > 0.15;
+      // 🔥 智能判斷：支援各種滑動模式
+      let shouldChange = false;
       
+      // 1. 快速輕滑：速度快，距離可能很小
+      if (swipeVelocity > 0.05 && swipeDistance > smallSwipeThreshold) {
+        shouldChange = true;
+        console.log('✅ 快速輕滑模式觸發');
+      }
+      // 2. 中等滑動：中等距離和速度
+      else if (swipeDistance > mediumSwipeThreshold && swipeVelocity > 0.02) {
+        shouldChange = true;
+        console.log('✅ 中等滑動模式觸發');
+      }
+      // 3. 大力拖曳：距離很大，速度可能較慢
+      else if (swipeDistance > largeSwipeThreshold) {
+        shouldChange = true;
+        console.log('✅ 大力拖曳模式觸發');
+      }
+      // 4. 慢速長滑：距離中等，但滑動時間較長
+      else if (swipeDistance > mediumSwipeThreshold && swipeTime > 200) {
+        shouldChange = true;
+        console.log('✅ 慢速長滑模式觸發');
+      }
+      // 5. 極輕觸：保留原有的極靈敏判斷
+      else if (swipeDistance > smallSwipeThreshold && swipeVelocity > 0.01) {
+        shouldChange = true;
+        console.log('✅ 極輕觸模式觸發');
+      }      
       if (shouldChange) {
         if (gestureState.dx > 0) {
-          // 向右滑動：切換到上一個月
           handlePreviousMonth();
-          console.log('📅 切換到上一個月');
+          console.log('📅 極靈敏切換到上一個月');
         } else {
-          // 向左滑動：切換到下一個月  
           handleNextMonth();
-          console.log('📅 切換到下一個月');
+          console.log('📅 極靈敏切換到下一個月');
         }
         
-        // 執行切換動畫
+        // 🔥 快速順暢的切換動畫
         Animated.timing(calendarSlideAnimation, {
           toValue: gestureState.dx > 0 ? width : -width,
-          duration: 200,
+          duration: 150, // 🔥 更快的動畫：150毫秒
           useNativeDriver: true,
         }).start(() => {
-          // 動畫完成後重置
           calendarSlideAnimation.setValue(0);
         });
       } else {
-        // 滑動距離不足，回彈到原位
+        // 🔥 快速回彈動畫
         Animated.spring(calendarSlideAnimation, {
           toValue: 0,
-          tension: 150,
+          tension: 200, // 🔥 更快的回彈
           friction: 8,
           useNativeDriver: true,
         }).start();
       }
     },
     
-    // 手勢被中斷
+    // 🔥 被中斷時也快速回彈
     onPanResponderTerminate: (evt, gestureState) => {
-      // 如果手勢被中斷，回彈到原位
       Animated.spring(calendarSlideAnimation, {
         toValue: 0,
-        tension: 150,
+        tension: 200,
         friction: 8,
         useNativeDriver: true,
       }).start();
@@ -488,6 +637,8 @@ export default function HomePage({
       for (let day = 0; day < 7; day++) {
         const isCurrentMonth = current.getMonth() === month;
         const isToday = current.toDateString() === today.toDateString();
+// 🔥 修正：檢查是否為公眾假期，傳遞語言參數
+        const holidayName = isPublicHoliday(current, currentLanguage, getText);        const isHoliday = !!holidayName;
         
         // 檢查這一天是否有還款
         const dayPayments = [];
@@ -526,7 +677,9 @@ export default function HomePage({
           hasPayment,
           payments: dayPayments,
           dotColor,
-          dotCount
+          dotCount,
+          isHoliday, // 🔥 新增：公眾假期標記
+          holidayName // 🔥 新增：公眾假期名稱
         });
         
         current.setDate(current.getDate() + 1);
@@ -546,7 +699,8 @@ export default function HomePage({
       return;
     }
     
-    if (dateInfo.hasPayment && dateInfo.payments.length > 0) {
+    // 🔥 修正：如果有還款或是公眾假期，都可以點擊查看
+    if ((dateInfo.hasPayment && dateInfo.payments.length > 0) || dateInfo.isHoliday) {
       setSelectedDate(dateInfo);
       setShowDateModal(true);
     }
@@ -591,18 +745,34 @@ export default function HomePage({
     }
   };
 
-  // 格式化彈窗日期標題
-  const formatModalDate = (date) => {
+// 🔥 修正：格式化彈窗日期標題，包含公眾假期資訊
+  const formatModalDate = (dateInfo) => {
+    const date = dateInfo.date;
+    let title = '';
+    
     if (currentLanguage === 'zh-TW') {
-      return `${date.getMonth() + 1}月${date.getDate()}日應付款`;
+      title = `${date.getMonth() + 1}月${date.getDate()}日`;
+      if (dateInfo.isHoliday) {
+        title += ` - ${dateInfo.holidayName}`;
+      }
+      if (dateInfo.hasPayment && dateInfo.payments.length > 0) {
+        title += ' 應付款';
+      }
     } else {
-      return `${date.toLocaleDateString('en-US', { 
+      title = date.toLocaleDateString('en-US', { 
         month: 'long', 
         day: 'numeric' 
-      })} ${getText('home.payments') || 'Payments'}`;
+      });
+      if (dateInfo.isHoliday) {
+        title += ` - ${dateInfo.holidayName}`;
+      }
+      if (dateInfo.hasPayment && dateInfo.payments.length > 0) {
+        title += ` ${getText('home.payments') || 'Payments'}`;
+      }
     }
+    
+    return title;
   };
-
   const monthNames = getMonthNames();
   const nextDueCards = getNextDueCards();
   const calendar = generateCalendar(currentDisplayYear, currentDisplayMonth);
@@ -809,6 +979,10 @@ export default function HomePage({
                           <Text style={styles.paymentCount}>{dateInfo.dotCount}</Text>
                         </View>
                       )}
+                      {/* 🔥 新增：公眾假期標記 */}
+                      {dateInfo.isHoliday && (
+                        <View style={styles.holidayDot} />
+                      )}
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -861,7 +1035,7 @@ export default function HomePage({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {selectedDate && formatModalDate(selectedDate.date)}
+                {selectedDate && formatModalDate(selectedDate)}
               </Text>
               <TouchableOpacity 
                 onPress={() => setShowDateModal(false)}
@@ -871,6 +1045,13 @@ export default function HomePage({
               </TouchableOpacity>
             </View>
             
+            {/* 🔥 新增：顯示公眾假期資訊 */}
+            {selectedDate?.isHoliday && (
+              <View style={styles.holidayInfo}>
+                <MaterialIcons name="event" size={20} color="#2196F3" />
+                <Text style={styles.holidayText}>{selectedDate.holidayName}</Text>
+              </View>
+            )}
             {selectedDate?.payments.map((payment, index) => {
               return (
                 <View key={index} style={styles.paymentItem}>
@@ -1089,4 +1270,30 @@ const styles = StyleSheet.create({
   selectedOptionText: { color: '#007AFF', fontWeight: '600' },
   confirmButton: { backgroundColor: '#007AFF', borderRadius: 8, paddingVertical: 16, alignItems: 'center', marginTop: 20 },
   confirmButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  // 🔥 新增：公眾假期相關樣式
+  holidayDot: {
+    position: 'absolute',
+    bottom: 2,
+    left: '50%',
+    marginLeft: -3,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#87CEEB', // 淺藍色
+  },
+  holidayInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  holidayText: {
+    fontSize: 14,
+    color: '#1976D2',
+    fontWeight: '500',
+    marginLeft: 8,
+  },
 });

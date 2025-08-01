@@ -736,7 +736,7 @@ export default function ExplorePage({
     }
   }, [compareMode]);
 
-  const handleCardCompareSelect = useCallback((card) => {
+const handleCardCompareSelect = useCallback((card) => {
     console.log(`📊 選擇比較卡片: ${card.name}`);
     
     setSelectedCardsForComparison(prev => {
@@ -745,22 +745,22 @@ export default function ExplorePage({
       if (isAlreadySelected) {
         // 取消選擇
         return prev.filter(c => c.id !== card.id);
-      } else if (prev.length < 2) {
-        // 添加選擇（最多2張）
-        return [...prev, card];
+      } else if (prev.length === 0) {
+        // 第一張卡片選擇
+        return [card];
+      } else if (prev.length === 1) {
+        // 第二張卡片選擇，直接開啟比較模態框
+        const newSelection = [prev[0], card];
+        setTimeout(() => {
+          setShowComparisonModal(true);
+        }, 100);
+        return newSelection;
       } else {
         // 已經選擇2張，替換第一張
         return [prev[1], card];
       }
     });
   }, []);
-
-  const handleStartComparison = useCallback(() => {
-    if (selectedCardsForComparison.length === 2) {
-      console.log(`📊 開始比較: ${selectedCardsForComparison.map(c => c.name).join(' vs ')}`);
-      setShowComparisonModal(true);
-    }
-  }, [selectedCardsForComparison]);
 
   const handleCloseComparison = useCallback(() => {
     console.log(`❌ 關閉比較模式`);
@@ -790,24 +790,20 @@ export default function ExplorePage({
     const isSelectedForComparison = selectedCardsForComparison.some(c => c.id === card.id);
     
     return (
-      <View key={`${card.id}-${index}`} style={[
-        styles.cardItem,
-        isSelectedForComparison && styles.selectedCardItem
-      ]}>
-        {/* 🔥 比較模式選擇器 */}
-        {compareMode && (
-          <TouchableOpacity
-            style={[styles.compareSelector, isSelectedForComparison && styles.compareSelectorSelected]}
-            onPress={() => handleCardCompareSelect(card)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.compareSelectorInner, isSelectedForComparison && styles.compareSelectorInnerSelected]}>
-              {isSelectedForComparison && (
-                <MaterialIcons name="check" size={16} color="#FFFFFF" />
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
+      <TouchableOpacity 
+        key={`${card.id}-${index}`} 
+        style={[
+          styles.cardItem,
+          isSelectedForComparison && styles.selectedCardItem
+        ]}
+        onPress={() => {
+          if (compareMode) {
+            handleCardCompareSelect(card);
+          }
+        }}
+        activeOpacity={compareMode ? 0.7 : 1}
+        disabled={!compareMode}
+      >
 
         {/* 🔥 卡片頭部：名稱、銀行、回贈和收藏 */}
         <View style={styles.cardHeader}>
@@ -896,18 +892,9 @@ export default function ExplorePage({
             activeOpacity={compareMode ? 1 : 0.7}
             onPress={() => {
               if (!compareMode) {
-                handleCardCompareSelect(card);
-                if (selectedCardsForComparison.length === 0) {
-                  // 如果沒有選擇任何卡片，開啟比較模式並選擇這張卡片
-                  setCompareMode(true);
-                  setSelectedCardsForComparison([card]);
-                } else if (selectedCardsForComparison.length === 1 && !selectedCardsForComparison.some(c => c.id === card.id)) {
-                  // 如果已經選擇1張不同的卡片，選擇這張並開始比較
-                  setSelectedCardsForComparison(prev => [...prev, card]);
-                  setTimeout(() => {
-                    setShowComparisonModal(true);
-                  }, 100);
-                }
+                // 開啟比較模式並選擇這張卡片
+                setCompareMode(true);
+                setSelectedCardsForComparison([card]);
               }
             }}
             disabled={compareMode}
@@ -920,7 +907,7 @@ export default function ExplorePage({
             <Text style={styles.actionButtonText}>了解更多</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   }, [currentLanguage, handleToggleFavorite, isFavorite, safeCategoryArray, compareMode, selectedCardsForComparison, handleCardCompareSelect]);
 
@@ -1104,62 +1091,6 @@ export default function ExplorePage({
     );
   }, [advancedFilter, currentLanguage]);
 
-  // 🔥 新增：渲染比較功能界面
-  const renderComparisonInterface = useCallback(() => {
-    if (!compareMode) return null;
-
-    return (
-      <View style={styles.comparisonInterface}>
-        <View style={styles.comparisonHeader}>
-          <View style={styles.comparisonTitle}>
-            <MaterialIcons name="compare" size={20} color="#3B82F6" />
-            <Text style={styles.comparisonTitleText}>
-  {currentLanguage === 'zh-TW' 
-    ? `比較模式 (${selectedCardsForComparison.length}/2)` 
-    : `Comparison Mode (${selectedCardsForComparison.length}/2)`
-  }
-</Text>
-          </View>
-          <View style={styles.comparisonActions}>
-            {selectedCardsForComparison.length === 2 && (
-              <TouchableOpacity
-                style={styles.startComparisonButton}
-                onPress={handleStartComparison}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.startComparisonButtonText}>
-  {currentLanguage === 'zh-TW' ? '開始比較' : 'Start Comparison'}
-</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.cancelComparisonButton}
-              onPress={handleCloseComparison}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="close" size={20} color="#666666" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        {selectedCardsForComparison.length > 0 && (
-          <View style={styles.selectedCardsPreview}>
-            {selectedCardsForComparison.map((card, index) => (
-              <View key={card.id} style={styles.selectedCardPreview}>
-                <Text style={styles.selectedCardName} numberOfLines={1}>
-                  {index + 1}. {card.name}
-                </Text>
-                <Text style={styles.selectedCardBank} numberOfLines={1}>
-                  {card.bank}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-    );
-  }, [compareMode, selectedCardsForComparison, handleStartComparison, handleCloseComparison]);
-
   return (
     <View style={styles.rootContainer} {...panResponder.panHandlers}>
       {/* 背景層：完整的 Home Page 渲染 */}
@@ -1249,14 +1180,7 @@ export default function ExplorePage({
           )}
 
           {/* 搜索欄 */}
-          <View style={styles.searchSection}>
-            <Text style={styles.sectionTitle}>
-              {currentLanguage === 'zh-TW' ? '探索更好的選擇' : 'Explore Better Options'}
-            </Text>
-            <Text style={styles.sectionSubtitle}>
-              {currentLanguage === 'zh-TW' ? '搜索和比較其他優質信用卡' : 'Search and compare premium credit cards'}
-            </Text>
-            
+<View style={styles.searchSectionCompact}>            
             <View style={styles.searchContainer}>
               <MaterialIcons name="search" size={20} color="#999999" />
               <TextInput
@@ -1280,9 +1204,6 @@ export default function ExplorePage({
               {CATEGORIES.map(renderCategoryButton)}
             </ScrollView>
           </View>
-
-          {/* 🔥 比較功能界面 */}
-          {renderComparisonInterface()}
 
           {/* 推薦內容 */}
           <ScrollView style={styles.contentSection} showsVerticalScrollIndicator={false}>
@@ -1795,13 +1716,6 @@ export default function ExplorePage({
               <Text style={styles.modalTitle}>
   {currentLanguage === 'zh-TW' ? '信用卡比較' : 'Credit Card Comparison'}
 </Text>
-              <TouchableOpacity 
-                style={styles.modalCloseButton}
-                onPress={() => setShowComparisonModal(false)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
             </View>
             
             <ScrollView style={styles.comparisonModalBody} showsVerticalScrollIndicator={false}>
@@ -2193,6 +2107,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
+  searchSectionCompact: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -2217,6 +2135,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333333',
     marginLeft: 8,
+    letterSpacing: 0, // 🔥 關鍵修復：確保搜尋框沒有字距問題
   },
   filterSection: {
     paddingVertical: 10,
@@ -2333,72 +2252,6 @@ advancedFilterButtonText: {
   clearFiltersButton: {
     padding: 4,
   },
-  // 🔥 新增：比較功能界面樣式
-  comparisonInterface: {
-    backgroundColor: '#F0F9FF',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  comparisonHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  comparisonTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  comparisonTitleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0C4A6E',
-    marginLeft: 6,
-  },
-  comparisonActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  startComparisonButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  startComparisonButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cancelComparisonButton: {
-    padding: 4,
-  },
-  selectedCardsPreview: {
-    gap: 4,
-  },
-  selectedCardPreview: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  selectedCardName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0C4A6E',
-  },
-  selectedCardBank: {
-    fontSize: 11,
-    color: '#075985',
-  },
   // 🔥 全新優化的卡片樣式
   cardItem: {
     backgroundColor: '#FFFFFF',
@@ -2421,33 +2274,6 @@ advancedFilterButtonText: {
     borderColor: '#3B82F6',
     borderWidth: 2,
     backgroundColor: '#F8FAFF',
-  },
-  // 🔥 新增：比較模式選擇器
-  compareSelector: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  compareSelectorSelected: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#3B82F6',
-  },
-  compareSelectorInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-  },
-  compareSelectorInnerSelected: {
-    backgroundColor: '#3B82F6',
   },
   cardHeader: {
     flexDirection: 'row',

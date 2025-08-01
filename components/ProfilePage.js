@@ -563,26 +563,86 @@ const isAdmin = (userEmail) => {
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>{getText('profile.privacySecurity')}</Text>
                 <ScrollView style={styles.modalScroll}>
-                  <Text style={styles.privacyText}>
-                    {currentLanguage === 'en' 
-                      ? `Your privacy is important to us. This app stores your credit card information locally on your device and does not transmit sensitive financial data to external servers.
+<Text style={styles.privacyText}>
+  {currentLanguage === 'en' 
+    ? `Privacy & Data Security
 
-We collect only the minimum information necessary to provide our services:
-• Credit card names and due dates (no card numbers)
-• Payment reminder preferences  
-• Usage statistics for app improvement
+Your privacy and data security are our top priorities. Here's how we protect your information:
 
-Your data is encrypted and stored securely on your device. We do not share your personal information with third parties without your explicit consent.`
-                      : `您的隱私對我們很重要。本應用程式將您的信用卡資訊本地儲存在您的設備上，不會將敏感的財務數據傳輸到外部伺服器。
+Data We Collect:
+- Account information (email, username)
+- Credit card preferences (card names, due dates - NOT card numbers)
+- App usage statistics and preferences
+- Device information for technical support
 
-我們僅收集提供服務所需的最少資訊：
-• 信用卡名稱和到期日（不包括卡號）
-• 付款提醒偏好設定
-• 應用程式改進的使用統計
+Data We DON'T Collect:
+- Full credit card numbers or CVV codes
+- Banking credentials or passwords
+- Social security numbers or government IDs
+- Biometric data or location tracking
 
-您的數據經過加密並安全地儲存在您的設備上。我們不會在未經您明確同意的情況下與第三方分享您的個人資訊。`
-                    }
-                  </Text>
+How We Protect Your Data:
+- All data is encrypted during transmission and storage
+- Firebase security rules protect your information
+- Local device storage with encryption
+- Regular security audits and updates
+- No sharing with third parties without consent
+
+Your Rights:
+- Access your personal data anytime
+- Request data correction or deletion
+- Export your data in standard formats
+- Withdraw consent for data processing
+
+Third-Party Services:
+- Firebase (Google): Authentication and data storage
+- Expo: App development and distribution platform
+- We comply with their respective privacy policies
+
+Contact Us:
+For privacy concerns, contact support@cardreminder.app
+
+Last updated: August 2, 2025`
+    : `隱私與數據安全
+
+您的隱私和數據安全是我們的首要考慮。以下是我們如何保護您的資訊：
+
+我們收集的數據：
+- 帳戶資訊（電子郵件、用戶名）
+- 信用卡偏好設定（卡片名稱、到期日 - 不包括卡號）
+- 應用程式使用統計和偏好設定
+- 設備資訊（用於技術支援）
+
+我們不收集的數據：
+- 完整信用卡號碼或CVV安全碼
+- 銀行憑證或密碼
+- 身份證號碼或政府身份證件
+- 生物識別數據或位置追蹤
+
+我們如何保護您的數據：
+- 所有數據在傳輸和存儲過程中都經過加密
+- Firebase安全規則保護您的資訊
+- 本地設備存儲採用加密技術
+- 定期進行安全審計和更新
+- 未經同意不與第三方分享
+
+您的權利：
+- 隨時訪問您的個人數據
+- 要求更正或刪除數據
+- 以標準格式匯出您的數據
+- 撤回數據處理同意
+
+第三方服務：
+- Firebase（Google）：身份驗證和數據存儲
+- Expo：應用程式開發和分發平台
+- 我們遵守其各自的隱私政策
+
+聯繫我們：
+如有隱私問題，請聯繫 support@cardreminder.app
+
+最後更新：2025年8月2日`
+  }
+</Text>
                 </ScrollView>
                 <TouchableOpacity 
                   style={styles.modalCloseButton}

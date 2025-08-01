@@ -1,4 +1,4 @@
-// languages.js - 完整的多語言文字定義文件（包含忘記密碼功能翻譯）
+// languages.js - 完整的多語言文字定義文件（新增整合登入和註冊頁面翻譯）
 export const translations = {
   en: {
     // Welcome Page
@@ -10,7 +10,145 @@ export const translations = {
       startButton: 'Start Now'
     },
     
-    // Login Page
+    // 🔥 新增：整合登入頁面完整英文翻譯
+    integratedLogin: {
+      title: 'CardReminder',
+      welcomeText: 'Welcome back! Please choose your login method',
+      emailMethod: 'Sign in with Email',
+      phoneMethod: 'Sign in with Phone Number',
+      email: 'Email',
+      password: 'Password',
+      phoneNumber: 'Phone Number',
+      verificationCode: 'Verification Code',
+      enterEmail: 'Enter your email',
+      enterPassword: 'Enter your password',
+      enterPhoneNumber: '9123 4567',
+      enterVerificationCode: '000000',
+      forgotPassword: 'Forgot Password?',
+      signInButton: 'Sign In',
+      signingIn: 'Signing In...',
+      sendCodeButton: 'Send Verification Code',
+      sendingCode: 'Sending...',
+      verifyCodeButton: 'Verify Code',
+      verifying: 'Verifying...',
+      resendCode: 'Resend',
+      resendCodeIn: 'seconds until resend',
+      noAccount: "Don't have an account?",
+      signUpNow: 'Sign Up Now',
+      phoneHint: 'We will send a verification code to this number',
+      otpHint: 'Please enter the 6-digit verification code',
+      noCodeReceived: "Didn't receive the code?",
+      devModeTitle: 'Development Mode',
+      devModeMessage: 'Verification code "sent" to {phone}\n\n🧪 Development Mode:\n• You can use any 6-digit code\n• For example: 123456, 888888\n• This only works in development',
+      codeSent: 'Verification Code Sent',
+      codeSentMessage: 'SMS verification code sent to {phone}\nPlease check your messages',
+      loginSuccess: 'Login Successful',
+      welcomeBack: 'Welcome back, {name}!',
+      getStarted: 'Get Started',
+      // Error messages
+      inputError: 'Input Error',
+      formatError: 'Format Error',
+      loginError: 'Login Error',
+      sendFailed: 'Send Failed',
+      verificationFailed: 'Verification Failed',
+      emailRequired: 'Please enter your email address',
+      passwordRequired: 'Please enter your password',
+      phoneRequired: 'Please enter your phone number',
+      codeRequired: 'Please enter the 6-digit verification code',
+      invalidEmail: 'Please enter a valid email address',
+      invalidPhone: 'Please enter a valid Hong Kong phone number',
+      invalidCode: 'Verification code must be 6 digits',
+      loginFailed: 'Login failed, please check your email and password',
+      codeSendFailed: 'Unable to send verification code, please try again later',
+      codeVerifyFailed: 'Verification code error, please check and try again',
+      networkError: 'Network error, please try again later'
+    },
+
+    // 🔥 新增：整合註冊頁面完整英文翻譯
+    integratedSignUp: {
+      title: 'CardReminder',
+      welcomeText: 'Join us! Please choose your registration method',
+      emailMethod: 'Sign up with Email',
+      phoneMethod: 'Sign up with Phone Number',
+      username: 'Username',
+      email: 'Email',
+      password: 'Password',
+      confirmPassword: 'Confirm Password',
+      phoneNumber: 'Phone Number',
+      verificationCode: 'Verification Code',
+      enterUsername: 'Enter your username',
+      enterEmail: 'Enter your email',
+      enterPassword: 'Enter your password',
+      confirmYourPassword: 'Confirm your password',
+      enterPhoneNumber: '9123 4567',
+      enterVerificationCode: '000000',
+      createAccountButton: 'Create Account',
+      creatingAccount: 'Creating Account...',
+      sendCodeButton: 'Send Verification Code',
+      sendingCode: 'Sending...',
+      verifyCodeButton: 'Verify Code',
+      verifying: 'Verifying...',
+      resendCode: 'Resend',
+      resendCodeIn: 'seconds until resend',
+      alreadyHaveAccount: 'Already have an account?',
+      signInNow: 'Sign In Now',
+      termsAgreement: 'By creating an account, you agree to our',
+      termsOfService: 'Terms of Service',
+      and: 'and',
+      privacyPolicy: 'Privacy Policy',
+      phoneHint: 'We will send a verification code to this number',
+      otpHint: 'Please enter the 6-digit verification code',
+      noCodeReceived: "Didn't receive the code?",
+      devModeTitle: 'Development Mode',
+      devModeMessage: 'Verification code "sent" to {phone}\n\n🧪 Development Mode:\n• You can use any 6-digit code\n• For example: 123456, 888888\n• This only works in development',
+      codeSent: 'Verification Code Sent',
+      codeSentMessage: 'SMS verification code sent to {phone}\nPlease check your messages',
+      signUpSuccess: '📧 Registration Successful! Please verify your email',
+      emailVerificationMessage: 'Verification email sent to {email}\n\nPlease check your mailbox (including spam folder) and click the verification link to complete registration.',
+      didNotReceiveEmail: "I didn't receive the email",
+      checkEmail: 'OK, I\'ll check',
+      resendEmailSuccess: 'Verification email resent, please check your mailbox again',
+      resendEmailFailed: 'Please try again later or contact support',
+      registrationSuccess: 'Registration Successful',
+      welcomeMessage: '🎉 Welcome to CardReminder, {name}!',
+      getStarted: 'Get Started',
+      resendSuccess: 'Resend Successful',
+      newCodeSent: 'New verification code sent to your phone, please check',
+      // Error messages
+      inputError: 'Input Error',
+      formatError: 'Format Error',
+      signUpError: 'Registration Error',
+      sendFailed: 'Send Failed',
+      verificationFailed: 'Verification Failed',
+      usernameRequired: 'Please enter your username',
+      usernameMinLength: 'Username must be at least 3 characters',
+      emailRequired: 'Please enter your email address',
+      passwordRequired: 'Please enter your password',
+      phoneUsernameRequired: 'Please enter your username',
+      phoneUsernameMinLength: 'Username must be at least 2 characters',
+      phoneRequired: 'Please enter your phone number',
+      codeRequired: 'Please enter the 6-digit verification code',
+      invalidEmail: 'Please enter a valid email address',
+      passwordTooShort: 'Password must be at least 6 characters',
+      passwordMismatch: 'Passwords do not match',
+      passwordMismatchMessage: 'The two passwords entered do not match, please re-confirm',
+      invalidPhone: 'Please enter a valid Hong Kong phone number',
+      invalidCode: 'Verification code must be 6 digits',
+      registrationFailed: 'Registration failed, an error occurred during registration',
+      codeSendFailed: 'Unable to send verification code, please try again later',
+      codeVerifyFailed: 'Verification code error, please check and try again',
+      networkError: 'Network error, please try again later'
+    },
+
+    // 🔥 新增：語言切換器翻譯
+    languageSelector: {
+      title: 'Language',
+      english: 'English',
+      traditionalChinese: 'Traditional Chinese',
+      cancel: 'Cancel'
+    },
+    
+    // Login Page (保留原有的，用於其他登入頁面)
     login: {
       title: 'CardReminder',
       welcome: 'Welcome back! Please sign in to your account',
@@ -30,7 +168,7 @@ export const translations = {
       pleaseEnterValidEmail: 'Please enter a valid email address'
     },
     
-    // Sign Up Page
+    // Sign Up Page (保留原有的，用於其他註冊頁面)
     signUp: {
       title: 'Create Account',
       subtitle: 'Join CardReminder today',
@@ -95,24 +233,23 @@ export const translations = {
       networkError: 'An error occurred while sending the password reset email, please try again later',
       // Success messages
       resetEmailSent: '📧 Reset Email Sent!',
-      resetEmailMessage: 'We have sent a password reset link to: {email}\n\nPlease check:\n Inbox\n Spam folder\n Promotions folder\n\nClick the link in the email to reset your password.',
+      resetEmailMessage: 'We have sent a password reset link to: {email}\n\nPlease check:\n✅ Inbox\n✅ Spam folder\n✅ Promotions folder\n\nClick the link in the email to reset your password.',
       checkEmail: 'OK, I\'ll check'
     },
     
-        // Terms of Service
-    terms: {
-      title: 'Terms of Service',
-      effectiveDate: 'Effective Date: July 31, 2025',
-      lastUpdated: 'Last Updated: July 31, 2025'
-    },
+// Terms of Service
+terms: {
+  title: 'Terms of Service',
+  effectiveDate: 'Effective Date: August 2, 2025',
+  lastUpdated: 'Last Updated: August 2, 2025'
+},
 
-    // Privacy Policy
-    privacy: {
-      title: 'Privacy Policy',
-      effectiveDate: 'Effective Date: July 31, 2025',
-      lastUpdated: 'Last Updated: July 31, 2025'
-    },
-
+// Privacy Policy
+privacy: {
+  title: 'Privacy Policy', 
+  effectiveDate: 'Effective Date: August 2, 2025',
+  lastUpdated: 'Last Updated: August 2, 2025'
+},
     // Home Page
     home: {
       title: 'CardReminder',
@@ -141,7 +278,18 @@ export const translations = {
       payments: 'Payments',
       futurePayment: 'Future payment',
       paid: 'Paid',
-      cardsText: 'cards'
+      cardsText: 'cards',
+      holidays: {
+        'NewYearsDay': 'New Year\'s Day',
+        'LabourDay': 'Labour Day', 
+        'HKSAREstablishmentDay': 'HKSAR Establishment Day',
+        'NationalDay': 'National Day',
+        'ChristmasDay': 'Christmas Day',
+        'BoxingDay': 'Boxing Day',
+        'LunarNewYearDay1': 'Lunar New Year Day 1',
+        'LunarNewYearDay2': 'Lunar New Year Day 2',
+        'LunarNewYearDay3': 'Lunar New Year Day 3'
+      }
     },
     
     // 🔥 新增和完善：探索頁面完整翻譯
@@ -388,48 +536,100 @@ export const translations = {
       dateError: 'Date error'
     },
     
-    // Achievements Page
+    // 🔥 完整修正：成就頁面翻譯（包含所有新增成就）
     achievements: {
       title: 'Achievements',
       completed: 'Completed',
       total: 'Total',
       progress: 'Progress',
+      
+      // 入門成就組
       gettingStarted: 'Getting Started',
       addFirstCard: 'Add your first credit card',
       firstPayment: 'First Payment',
       makeFirstPayment: 'Make your first on-time payment',
+      welcomeExplorer: 'Welcome Explorer',
+      visitExploreFirstTime: 'Visit the explore feature for the first time',
+      
+      // 信用卡管理成就組
       cardCollector: 'Card Collector',
       addThreeCards: 'Add 3 different credit cards',
+      multitasker: 'Multitasker',
+      manageFiveCards: 'Manage 5+ active credit cards',
+      cardMaster: 'Card Master',
+      manageTenCards: 'Manage 10+ active credit cards',
+      bankExplorer: 'Bank Explorer',
+      addCardsFiveBanks: 'Add cards from 5 different banks',
+      
+      // 付款管理成就組
       perfectWeek: 'Perfect Week',
       noMissedPayments7Days: 'No missed payments for 7 days',
       monthlyChampion: 'Monthly Champion',
       payAllCardsOnTime: 'Pay all cards on time for a month',
       streakMaster: 'Streak Master',
       maintain90DayStreak: 'Maintain 90-day payment streak',
-      reliableUser: 'Reliable User',
-      useApp30Days: 'Use the app for 30 consecutive days',
-      persistenceKing: 'Persistence King',
-      useApp100Days: 'Use the app for 100 consecutive days',
       earlyBird: 'Early Bird',
       pay10BillsEarly: 'Pay 10 bills early (before due date)',
       neverLate: 'Never Late',
       perfectRecord6Months: 'Perfect payment record for 6 months',
-      bankExplorer: 'Bank Explorer',
-      addCardsFiveBanks: 'Add cards from 5 different banks',
-      organizationMaster: 'Organization Master',
-      setupNotificationsAllCards: 'Set up notifications for all cards',
-      centuryClub: 'Century Club',
-      make100Payments: 'Make 100 successful payments',
-      veteranUser: 'Veteran User',
-      useAppFullYear: 'Use the app for a full year',
       perfectionist: 'Perfectionist',
       hundredPercentOnTime: '100% on-time payment rate',
+      centuryClub: 'Century Club',
+      make100Payments: 'Make 100 successful payments',
+      
+      // 探索功能成就組
+      curiousExplorer: 'Curious Explorer',
+      visitExplore10Times: 'Visit the explore feature 10 times',
+      searchMaster: 'Search Master',
+      performSearches25Times: 'Perform card searches 25 times',
+      filterExpert: 'Filter Expert',
+      useFilters15Times: 'Use category filters 15 times',
+      comparisonAnalyst: 'Comparison Analyst',
+      compareCards5Times: 'Compare different cards 5 times',
+      
+      // 收藏系統成就組
+      firstFavorite: 'First Favorite',
+      addFirstFavorite: 'Add your first favorite card',
+      favoriteCollector: 'Favorite Collector',
+      add10Favorites: 'Add 10 cards to favorites',
+      wishlistMaster: 'Wishlist Master',
+      maintain20Favorites: 'Maintain 20+ cards in favorites',
+      
+      // 個人化成就組
+      profilePerfectionist: 'Profile Perfectionist',
+      updateProfile5Times: 'Update your profile 5 times',
+      multilingual: 'Multilingual',
+      switchLanguages3Times: 'Switch between languages 3 times',
+      notificationMaster: 'Notification Master',
+      setupNotificationsAllCards: 'Set up notifications for all cards',
       techSavvy: 'Tech Savvy',
       customizeNotifications: 'Customize notification settings',
-      multitasker: 'Multitasker',
-      manageFiveCards: 'Manage 5+ active credit cards',
+      
+      // 長期使用成就組
+      reliableUser: 'Reliable User',
+      useApp30Days: 'Use the app for 30 consecutive days',
+      persistenceKing: 'Persistence King',
+      useApp100Days: 'Use the app for 100 consecutive days',
+      veteranUser: 'Veteran User',
+      useAppFullYear: 'Use the app for a full year',
+      dailyChampion: 'Daily Champion',
+      loginDaily30Days: 'Login daily for 30 consecutive days',
+      
+      // 進階功能成就組
       calendarMaster: 'Calendar Master',
-      useCalendar20Times: 'Use payment calendar feature 20 times'
+      useCalendar20Times: 'Use payment calendar feature 20 times',
+      powerUser: 'Power User',
+      useAllFeatures: 'Use all major app features at least once',
+      organizationMaster: 'Organization Master',
+      setupNotificationsAllCards: 'Set up notifications for all cards',
+      
+      // 特殊成就組
+      earlyAdopter: 'Early Adopter',
+      joinedWithinFirstMonth: 'Joined the app within the first month of launch',
+      feedbackHero: 'Feedback Hero',
+      provideFeedback5Times: 'Provide feedback or suggestions 5 times',
+      sharingEnthusiast: 'Sharing Enthusiast',
+      shareApp3Times: 'Share the app with friends 3 times'
     },
     
     // Common
@@ -460,6 +660,144 @@ export const translations = {
       mainTitle: '管理您的付款',
       description: '透過及時提醒和輕鬆追蹤，掌握您的信用卡付款。',
       startButton: '立即開始'
+    },
+    
+    // 🔥 新增：整合登入頁面完整繁體中文翻譯
+    integratedLogin: {
+      title: 'CardReminder',
+      welcomeText: '歡迎回來！請選擇登入方式',
+      emailMethod: '使用電子郵件登入',
+      phoneMethod: '使用手機號碼登入',
+      email: '電子郵件',
+      password: '密碼',
+      phoneNumber: '手機號碼',
+      verificationCode: '驗證碼',
+      enterEmail: '輸入您的電子郵件',
+      enterPassword: '輸入您的密碼',
+      enterPhoneNumber: '9123 4567',
+      enterVerificationCode: '000000',
+      forgotPassword: '忘記密碼？',
+      signInButton: '登入',
+      signingIn: '登入中...',
+      sendCodeButton: '發送驗證碼',
+      sendingCode: '發送中...',
+      verifyCodeButton: '確認驗證碼',
+      verifying: '驗證中...',
+      resendCode: '重新發送',
+      resendCodeIn: '秒後可重新發送',
+      noAccount: '還沒有帳戶？',
+      signUpNow: '立即註冊',
+      phoneHint: '我們將發送驗證碼到這個號碼',
+      otpHint: '請輸入收到的6位數驗證碼',
+      noCodeReceived: '沒有收到驗證碼？',
+      devModeTitle: '開發模式提示',
+      devModeMessage: '模擬驗證碼已"發送"至 {phone}\n\n🧪 開發模式說明：\n• 您可以使用任何6位數字作為驗證碼\n• 例如：123456、888888等\n• 這僅在開發環境中有效',
+      codeSent: '驗證碼已發送',
+      codeSentMessage: 'SMS驗證碼已發送至 {phone}\n請檢查您的手機短信',
+      loginSuccess: '登入成功',
+      welcomeBack: '歡迎回來，{name}！',
+      getStarted: '開始使用',
+      // Error messages
+      inputError: '輸入錯誤',
+      formatError: '格式錯誤',
+      loginError: '登入錯誤',
+      sendFailed: '發送失敗',
+      verificationFailed: '驗證失敗',
+      emailRequired: '請輸入您的電子郵件地址',
+      passwordRequired: '請輸入您的密碼',
+      phoneRequired: '請輸入您的手機號碼',
+      codeRequired: '請輸入6位數驗證碼',
+      invalidEmail: '請輸入有效的電子郵件地址',
+      invalidPhone: '請輸入有效的香港手機號碼',
+      invalidCode: '驗證碼必須是6位數字',
+      loginFailed: '登入失敗，請檢查您的電子郵件和密碼',
+      codeSendFailed: '無法發送驗證碼，請稍後再試',
+      codeVerifyFailed: '驗證碼錯誤，請檢查後重新輸入',
+      networkError: '網絡錯誤，請稍後再試'
+    },
+
+    // 🔥 新增：整合註冊頁面完整繁體中文翻譯
+    integratedSignUp: {
+      title: 'CardReminder',
+      welcomeText: '加入我們！請選擇註冊方式',
+      emailMethod: '使用電子郵件註冊',
+      phoneMethod: '使用手機號碼註冊',
+      username: '用戶名',
+      email: '電子郵件',
+      password: '密碼',
+      confirmPassword: '確認密碼',
+      phoneNumber: '手機號碼',
+      verificationCode: '驗證碼',
+      enterUsername: '輸入您的用戶名',
+      enterEmail: '輸入您的電子郵件',
+      enterPassword: '輸入您的密碼',
+      confirmYourPassword: '再次輸入您的密碼',
+      enterPhoneNumber: '9123 4567',
+      enterVerificationCode: '000000',
+      createAccountButton: '創建帳戶',
+      creatingAccount: '註冊中...',
+      sendCodeButton: '發送驗證碼',
+      sendingCode: '發送中...',
+      verifyCodeButton: '確認驗證碼',
+      verifying: '驗證中...',
+      resendCode: '重新發送',
+      resendCodeIn: '秒後可重新發送',
+      alreadyHaveAccount: '已經有帳戶了？',
+      signInNow: '立即登入',
+      termsAgreement: '創建帳戶即表示您同意我們的',
+      termsOfService: '服務條款',
+      and: '和',
+      privacyPolicy: '隱私政策',
+      phoneHint: '我們將發送驗證碼到這個號碼',
+      otpHint: '請輸入收到的6位數驗證碼',
+      noCodeReceived: '沒有收到驗證碼？',
+      devModeTitle: '開發模式提示',
+      devModeMessage: '模擬驗證碼已"發送"至 {phone}\n\n🧪 開發模式說明：\n• 您可以使用任何6位數字作為驗證碼\n• 例如：123456、888888等\n• 這僅在開發環境中有效',
+      codeSent: '驗證碼已發送',
+      codeSentMessage: 'SMS驗證碼已發送至 {phone}\n請檢查您的手機短信',
+      signUpSuccess: '📧 註冊成功！請驗證您的郵件',
+      emailVerificationMessage: '驗證郵件已發送至 {email}\n\n請檢查您的郵箱（包括垃圾郵件文件夾）並點擊驗證連結完成註冊。',
+      didNotReceiveEmail: '我沒收到郵件',
+      checkEmail: '好的，我去檢查',
+      resendEmailSuccess: '驗證郵件已重新發送，請再次檢查郵箱',
+      resendEmailFailed: '請稍後再試或聯繫支援',
+      registrationSuccess: '註冊成功',
+      welcomeMessage: '🎉 歡迎加入CardReminder，{name}！',
+      getStarted: '開始使用',
+      resendSuccess: '重新發送成功',
+      newCodeSent: '新的驗證碼已發送到您的手機，請查收',
+      // Error messages
+      inputError: '輸入錯誤',
+      formatError: '格式錯誤',
+      signUpError: '註冊錯誤',
+      sendFailed: '發送失敗',
+      verificationFailed: '驗證失敗',
+      usernameRequired: '請輸入您的用戶名稱',
+      usernameMinLength: '用戶名稱至少需要 3 個字符',
+      emailRequired: '請輸入您的電子郵件地址',
+      passwordRequired: '請輸入您的密碼',
+      phoneUsernameRequired: '請輸入您的用戶名稱',
+      phoneUsernameMinLength: '用戶名稱至少需要 2 個字符',
+      phoneRequired: '請輸入您的手機號碼',
+      codeRequired: '請輸入6位數驗證碼',
+      invalidEmail: '請輸入有效的電子郵件地址',
+      passwordTooShort: '密碼至少需要 6 個字符',
+      passwordMismatch: '密碼不匹配',
+      passwordMismatchMessage: '兩次輸入的密碼不一致，請重新確認',
+      invalidPhone: '請輸入有效的香港手機號碼',
+      invalidCode: '驗證碼必須是6位數字',
+      registrationFailed: '註冊失敗，註冊過程中發生錯誤',
+      codeSendFailed: '無法發送驗證碼，請稍後再試',
+      codeVerifyFailed: '驗證碼錯誤，請檢查後重新輸入',
+      networkError: '網絡錯誤，請稍後再試'
+    },
+
+    // 🔥 新增：語言切換器翻譯
+    languageSelector: {
+      title: '語言',
+      english: 'English',
+      traditionalChinese: '繁體中文',
+      cancel: '取消'
     },
     
     // Login Page
@@ -553,19 +891,19 @@ export const translations = {
       checkEmail: '好的，我去檢查'
     },
     
-        // 服務條款
-    terms: {
-      title: '服務條款',
-      effectiveDate: '生效日期：2025年7月31日',
-      lastUpdated: '最後更新：2025年7月31日'
-    },
+// 服務條款
+terms: {
+  title: '服務條款',
+  effectiveDate: '生效日期：2025年8月2日',
+  lastUpdated: '最後更新：2025年8月2日'
+},
 
-    // 隱私政策
-    privacy: {
-      title: '隱私政策',
-      effectiveDate: '生效日期：2025年7月31日',
-      lastUpdated: '最後更新：2025年7月31日'
-    },
+// 隱私政策  
+privacy: {
+  title: '隱私政策',
+  effectiveDate: '生效日期：2025年8月2日',
+  lastUpdated: '最後更新：2025年8月2日'
+},
 
     // Home Page
     home: {
@@ -595,7 +933,18 @@ export const translations = {
       payments: '付款',
       futurePayment: '未來付款',
       paid: '已付款',
-      cardsText: '張卡片'
+      cardsText: '張卡片',
+      holidays: {
+        'NewYearsDay': '元旦',
+        'LabourDay': '勞動節',
+        'HKSAREstablishmentDay': '香港特別行政區成立紀念日', 
+        'NationalDay': '國慶日',
+        'ChristmasDay': '聖誕節',
+        'BoxingDay': '節禮日',
+        'LunarNewYearDay1': '農曆新年初一',
+        'LunarNewYearDay2': '農曆新年初二',
+        'LunarNewYearDay3': '農曆新年初三'
+      }
     },
     
     // 🔥 新增和完善：探索頁面完整翻譯
@@ -842,48 +1191,100 @@ export const translations = {
       dateError: '日期錯誤'
     },
     
-    // Achievements Page
+    // 🔥 完整修正：成就頁面翻譯（包含所有新增成就）
     achievements: {
       title: '成就',
       completed: '已完成',
       total: '總計',
       progress: '進度',
+      
+      // 入門成就組
       gettingStarted: '入門',
       addFirstCard: '新增您的第一張信用卡',
       firstPayment: '首次付款',
       makeFirstPayment: '完成第一次按時付款',
+      welcomeExplorer: '歡迎探索者',
+      visitExploreFirstTime: '首次使用探索功能',
+      
+      // 信用卡管理成就組
       cardCollector: '卡片收集者',
       addThreeCards: '新增 3 張不同的信用卡',
+      multitasker: '多工處理者',
+      manageFiveCards: '管理 5 張以上活躍信用卡',
+      cardMaster: '卡片大師',
+      manageTenCards: '管理 10 張以上活躍信用卡',
+      bankExplorer: '銀行探索者',
+      addCardsFiveBanks: '新增來自 5 家不同銀行的卡片',
+      
+      // 付款管理成就組
       perfectWeek: '完美一週',
       noMissedPayments7Days: '7 天內無錯過付款',
       monthlyChampion: '月度冠軍',
       payAllCardsOnTime: '一個月內所有卡片按時付款',
       streakMaster: '連勝大師',
       maintain90DayStreak: '保持 90 天付款連勝',
-      reliableUser: '可靠用戶',
-      useApp30Days: '連續使用應用程式 30 天',
-      persistenceKing: '堅持之王',
-      useApp100Days: '連續使用應用程式 100 天',
       earlyBird: '早起鳥',
       pay10BillsEarly: '提前支付 10 次帳單（在到期日前）',
       neverLate: '從不遲到',
       perfectRecord6Months: '6 個月完美付款記錄',
-      bankExplorer: '銀行探索者',
-      addCardsFiveBanks: '新增來自 5 家不同銀行的卡片',
-      organizationMaster: '組織大師',
-      setupNotificationsAllCards: '為所有卡片設定通知',
-      centuryClub: '百次俱樂部',
-      make100Payments: '完成 100 次成功付款',
-      veteranUser: '資深用戶',
-      useAppFullYear: '使用應用程式滿一年',
       perfectionist: '完美主義者',
       hundredPercentOnTime: '100% 按時付款率',
+      centuryClub: '百次俱樂部',
+      make100Payments: '完成 100 次成功付款',
+      
+      // 探索功能成就組
+      curiousExplorer: '好奇探索者',
+      visitExplore10Times: '使用探索功能 10 次',
+      searchMaster: '搜索大師',
+      performSearches25Times: '執行卡片搜索 25 次',
+      filterExpert: '篩選專家',
+      useFilters15Times: '使用分類篩選器 15 次',
+      comparisonAnalyst: '比較分析師',
+      compareCards5Times: '比較不同卡片 5 次',
+      
+      // 收藏系統成就組
+      firstFavorite: '首個收藏',
+      addFirstFavorite: '添加您的第一張收藏卡片',
+      favoriteCollector: '收藏收集者',
+      add10Favorites: '收藏 10 張卡片',
+      wishlistMaster: '願望清單大師',
+      maintain20Favorites: '維持 20 張以上收藏卡片',
+      
+      // 個人化成就組
+      profilePerfectionist: '個人資料完美主義者',
+      updateProfile5Times: '更新個人資料 5 次',
+      multilingual: '多語言使用者',
+      switchLanguages3Times: '在語言間切換 3 次',
+      notificationMaster: '通知大師',
+      setupNotificationsAllCards: '為所有卡片設定通知',
       techSavvy: '科技達人',
       customizeNotifications: '自訂通知設定',
-      multitasker: '多工處理者',
-      manageFiveCards: '管理 5 張以上活躍信用卡',
+      
+      // 長期使用成就組
+      reliableUser: '可靠用戶',
+      useApp30Days: '連續使用應用程式 30 天',
+      persistenceKing: '堅持之王',
+      useApp100Days: '連續使用應用程式 100 天',
+      veteranUser: '資深用戶',
+      useAppFullYear: '使用應用程式滿一年',
+      dailyChampion: '每日冠軍',
+      loginDaily30Days: '連續 30 天每日登入',
+      
+      // 進階功能成就組
       calendarMaster: '日曆大師',
-      useCalendar20Times: '使用付款日曆功能 20 次'
+      useCalendar20Times: '使用付款日曆功能 20 次',
+      powerUser: '高級用戶',
+      useAllFeatures: '至少使用所有主要應用功能一次',
+      organizationMaster: '組織大師',
+      setupNotificationsAllCards: '為所有卡片設定通知',
+      
+      // 特殊成就組
+      earlyAdopter: '早期採用者',
+      joinedWithinFirstMonth: '在應用程式推出第一個月內加入',
+      feedbackHero: '回饋英雄',
+      provideFeedback5Times: '提供意見或建議 5 次',
+      sharingEnthusiast: '分享愛好者',
+      shareApp3Times: '與朋友分享應用程式 3 次'
     },
     
     // Common

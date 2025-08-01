@@ -169,176 +169,171 @@ export default function TermsOfServicePage({ onBack, getText }) {
             <View style={styles.headerSpacer} />
           </View>
 
-          <ScrollView 
-            style={styles.content}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* 生效日期 */}
-            <View style={styles.dateSection}>
-              <Text style={styles.effectiveDate}>
-                {getText ? getText('terms.effectiveDate') : '生效日期：2024年1月1日'}
-              </Text>
-              <Text style={styles.lastUpdated}>
-                {getText ? getText('terms.lastUpdated') : '最後更新：2024年1月1日'}
-              </Text>
-            </View>
+<ScrollView 
+  style={styles.content}
+  showsVerticalScrollIndicator={false}
+>
+  {/* 生效日期 */}
+  <View style={styles.dateSection}>
+    <Text style={styles.effectiveDate}>
+      {getText ? getText('terms.effectiveDate') : '生效日期：2025年8月2日'}
+    </Text>
+    <Text style={styles.lastUpdated}>
+      {getText ? getText('terms.lastUpdated') : '最後更新：2025年8月2日'}
+    </Text>
+  </View>
 
-            {/* 歡迎段落 */}
-            <View style={styles.section}>
-              <Text style={styles.paragraph}>
-                歡迎使用CardReminder（以下稱「本應用程式」、「我們」或「服務」）。CardReminder是一個信用卡管理應用程式，旨在幫助用戶更好地管理和追蹤他們的信用卡資訊。
-              </Text>
-              <Text style={styles.paragraph}>
-                這些服務條款（以下稱「條款」）構成您與CardReminder之間具有法律約束力的協議。使用我們的服務即表示您同意受這些條款的約束。
-              </Text>
-            </View>
+  {/* 歡迎段落 */}
+  <View style={styles.section}>
+    <Text style={styles.paragraph}>
+      歡迎使用CardReminder（「本應用程式」、「我們」或「服務」）。CardReminder是一個信用卡管理應用程式，專門幫助用戶管理信用卡到期日並接收付款提醒。
+    </Text>
+    <Text style={styles.paragraph}>
+      使用我們的服務即表示您同意受這些服務條款（「條款」）的約束。請仔細閱讀這些條款。
+    </Text>
+  </View>
 
-            {/* 1. 服務描述 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>1. 服務描述</Text>
-              <Text style={styles.paragraph}>
-                CardReminder提供以下服務：
-              </Text>
-              <Text style={styles.bulletPoint}>• 信用卡資訊管理和組織</Text>
-              <Text style={styles.bulletPoint}>• 信用卡優惠和促銷資訊展示</Text>
-              <Text style={styles.bulletPoint}>• 個人化的信用卡推薦</Text>
-              <Text style={styles.bulletPoint}>• 用戶偏好設定和帳戶管理</Text>
-              <Text style={styles.paragraph}>
-                我們保留隨時修改、暫停或終止任何服務功能的權利，無需事先通知。
-              </Text>
-            </View>
+  {/* 1. 服務描述 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>1. 服務描述</Text>
+    <Text style={styles.paragraph}>
+      CardReminder提供以下核心功能：
+    </Text>
+    <Text style={styles.bulletPoint}>• 信用卡到期日管理和提醒通知</Text>
+    <Text style={styles.bulletPoint}>• 付款狀態追蹤和歷史記錄</Text>
+    <Text style={styles.bulletPoint}>• 信用卡產品資訊展示和比較</Text>
+    <Text style={styles.bulletPoint}>• 個人化設定和偏好管理</Text>
+    <Text style={styles.bulletPoint}>• 雙語介面支援（英文/繁體中文）</Text>
+    <Text style={styles.paragraph}>
+      我們保留隨時修改、暫停或終止任何服務功能的權利，但會盡可能提前通知用戶。
+    </Text>
+  </View>
 
-            {/* 2. 用戶責任 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>2. 用戶責任</Text>
-              <Text style={styles.paragraph}>
-                作為用戶，您同意：
-              </Text>
-              <Text style={styles.bulletPoint}>• 提供準確、完整和最新的帳戶資訊</Text>
-              <Text style={styles.bulletPoint}>• 維護您帳戶和密碼的安全性</Text>
-              <Text style={styles.bulletPoint}>• 不與他人分享您的帳戶憑證</Text>
-              <Text style={styles.bulletPoint}>• 遵守所有適用的法律法規</Text>
-              <Text style={styles.bulletPoint}>• 不將服務用於非法或未經授權的目的</Text>
-              <Text style={styles.paragraph}>
-                您對在您帳戶下發生的所有活動承擔責任。
-              </Text>
-            </View>
+  {/* 2. 用戶責任 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>2. 用戶責任與義務</Text>
+    <Text style={styles.paragraph}>
+      作為用戶，您同意：
+    </Text>
+    <Text style={styles.bulletPoint}>• 僅輸入您本人擁有的信用卡資訊</Text>
+    <Text style={styles.bulletPoint}>• 提供準確的卡片到期日和相關資訊</Text>
+    <Text style={styles.bulletPoint}>• 保護您的帳戶登入憑證安全</Text>
+    <Text style={styles.bulletPoint}>• 不與他人分享您的帳戶存取權</Text>
+    <Text style={styles.bulletPoint}>• 遵守所有適用的法律法規</Text>
+    <Text style={styles.bulletPoint}>• 不將服務用於非法或未經授權的目的</Text>
+    <Text style={styles.paragraph}>
+      您對在您帳戶下發生的所有活動承擔完全責任。
+    </Text>
+  </View>
 
-            {/* 3. 隱私與數據安全 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>3. 隱私與數據安全</Text>
-              <Text style={styles.paragraph}>
-                我們深知您的隱私對您的重要性。我們承諾：
-              </Text>
-              <Text style={styles.bulletPoint}>• 採用行業標準的加密技術保護您的數據</Text>
-              <Text style={styles.bulletPoint}>• 僅收集為提供服務所必需的資訊</Text>
-              <Text style={styles.bulletPoint}>• 不會將您的個人資訊出售給第三方</Text>
-              <Text style={styles.bulletPoint}>• 遵守相關的數據保護法規</Text>
-              <Text style={styles.paragraph}>
-                有關我們如何收集、使用和保護您的資訊的詳細資訊，請參閱我們的隱私政策。
-              </Text>
-            </View>
+  {/* 3. 數據收集與隱私 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>3. 數據收集與隱私保護</Text>
+    <Text style={styles.paragraph}>
+      我們承諾保護您的隱私並僅收集必要的資訊：
+    </Text>
+    <Text style={styles.bulletPoint}>• 我們不收集完整的信用卡號碼或CVV代碼</Text>
+    <Text style={styles.bulletPoint}>• 僅存儲卡片名稱、銀行名稱和到期日資訊</Text>
+    <Text style={styles.bulletPoint}>• 使用Firebase進行安全的數據存儲和身份驗證</Text>
+    <Text style={styles.bulletPoint}>• 遵守適用的數據保護法規（GDPR、CCPA等）</Text>
+    <Text style={styles.bulletPoint}>• 不會將您的個人資訊出售給第三方</Text>
+    <Text style={styles.paragraph}>
+      詳細的隱私保護措施請參閱我們的隱私政策。
+    </Text>
+  </View>
 
-            {/* 4. 智慧財產權 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>4. 智慧財產權</Text>
-              <Text style={styles.paragraph}>
-                CardReminder應用程式及其所有內容、功能和設計均受版權、商標和其他智慧財產權法律保護。您同意：
-              </Text>
-              <Text style={styles.bulletPoint}>• 不複製、修改或分發我們的應用程式</Text>
-              <Text style={styles.bulletPoint}>• 不逆向工程或試圖提取原始碼</Text>
-              <Text style={styles.bulletPoint}>• 尊重第三方的智慧財產權</Text>
-              <Text style={styles.bulletPoint}>• 僅將服務用於個人、非商業目的</Text>
-            </View>
+  {/* 4. 免責聲明 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>4. 免責聲明</Text>
+    <Text style={styles.paragraph}>
+      重要聲明：
+    </Text>
+    <Text style={styles.bulletPoint}>• CardReminder是提醒工具，不是金融顧問服務</Text>
+    <Text style={styles.bulletPoint}>• 我們不保證通知的準確性或及時性</Text>
+    <Text style={styles.bulletPoint}>• 用戶有責任確認實際付款日期和金額</Text>
+    <Text style={styles.bulletPoint}>• 我們不對因使用本服務而產生的財務損失負責</Text>
+    <Text style={styles.bulletPoint}>• 應用程式中的信用卡資訊僅供參考</Text>
+    <Text style={styles.paragraph}>
+      請務必直接與您的銀行確認所有付款詳情。
+    </Text>
+  </View>
 
-            {/* 5. 免責聲明 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>5. 免責聲明</Text>
-              <Text style={styles.paragraph}>
-                CardReminder按「現狀」提供服務。我們明確聲明：
-              </Text>
-              <Text style={styles.bulletPoint}>• 我們不是金融顧問或信用卡發行機構</Text>
-              <Text style={styles.bulletPoint}>• 應用程式中的資訊僅供參考，不構成財務建議</Text>
-              <Text style={styles.bulletPoint}>• 我們不保證服務的持續可用性或無錯誤性</Text>
-              <Text style={styles.bulletPoint}>• 用戶應自行驗證所有信用卡資訊的準確性</Text>
-              <Text style={styles.paragraph}>
-                我們強烈建議您在做出任何財務決定之前諮詢合格的財務顧問。
-              </Text>
-            </View>
+  {/* 5. 智慧財產權 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>5. 智慧財產權</Text>
+    <Text style={styles.paragraph}>
+      CardReminder應用程式及其內容均受智慧財產權法律保護：
+    </Text>
+    <Text style={styles.bulletPoint}>• 應用程式設計、代碼和功能為我們的財產</Text>
+    <Text style={styles.bulletPoint}>• 信用卡資訊和圖像版權歸其各自所有者</Text>
+    <Text style={styles.bulletPoint}>• 您不得複製、修改或分發應用程式</Text>
+    <Text style={styles.bulletPoint}>• 禁止逆向工程或提取原始碼</Text>
+  </View>
 
-            {/* 6. 責任限制 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>6. 責任限制</Text>
-              <Text style={styles.paragraph}>
-                在法律允許的最大範圍內，CardReminder不對以下情況承擔責任：
-              </Text>
-              <Text style={styles.bulletPoint}>• 因使用或無法使用服務而導致的任何損失</Text>
-              <Text style={styles.bulletPoint}>• 資料丟失或安全漏洞</Text>
-              <Text style={styles.bulletPoint}>• 第三方服務的中斷或故障</Text>
-              <Text style={styles.bulletPoint}>• 因信賴應用程式資訊而做出的財務決定</Text>
-            </View>
+  {/* 6. 服務終止 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>6. 服務終止</Text>
+    <Text style={styles.paragraph}>
+      以下情況下我們可能暫停或終止您的帳戶：
+    </Text>
+    <Text style={styles.bulletPoint}>• 違反這些服務條款</Text>
+    <Text style={styles.bulletPoint}>• 從事可疑或非法活動</Text>
+    <Text style={styles.bulletPoint}>• 長期不活躍的帳戶（超過2年）</Text>
+    <Text style={styles.bulletPoint}>• 技術或安全考量</Text>
+    <Text style={styles.paragraph}>
+      您也可以隨時透過應用程式設定刪除您的帳戶。
+    </Text>
+  </View>
 
-            {/* 7. 服務終止 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>7. 服務終止</Text>
-              <Text style={styles.paragraph}>
-                我們保留在以下情況下暫停或終止您的帳戶的權利：
-              </Text>
-              <Text style={styles.bulletPoint}>• 違反這些服務條款</Text>
-              <Text style={styles.bulletPoint}>• 從事欺詐或非法活動</Text>
-              <Text style={styles.bulletPoint}>• 長期不活躍的帳戶</Text>
-              <Text style={styles.bulletPoint}>• 技術或商業原因</Text>
-              <Text style={styles.paragraph}>
-                您也可以隨時刪除您的帳戶來終止服務。
-              </Text>
-            </View>
+  {/* 7. App Store 合規性 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>7. App Store 合規性</Text>
+    <Text style={styles.paragraph}>
+      本應用程式遵守Apple App Store和Google Play Store的所有規範：
+    </Text>
+    <Text style={styles.bulletPoint}>• 不包含任何違禁或不當內容</Text>
+    <Text style={styles.bulletPoint}>• 遵守兒童隱私保護法規（COPPA）</Text>
+    <Text style={styles.bulletPoint}>• 符合無障礙功能要求</Text>
+    <Text style={styles.bulletPoint}>• 透明的數據使用政策</Text>
+  </View>
 
-            {/* 8. 條款修改 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>8. 條款修改</Text>
-              <Text style={styles.paragraph}>
-                我們可能會不時更新這些服務條款。重大變更將通過以下方式通知您：
-              </Text>
-              <Text style={styles.bulletPoint}>• 應用程式內通知</Text>
-              <Text style={styles.bulletPoint}>• 電子郵件通知（如適用）</Text>
-              <Text style={styles.bulletPoint}>• 在我們的網站上發佈通知</Text>
-              <Text style={styles.paragraph}>
-                繼續使用服務即表示您接受修改後的條款。
-              </Text>
-            </View>
+  {/* 8. 條款修改 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>8. 條款修改</Text>
+    <Text style={styles.paragraph}>
+      我們可能會更新這些服務條款。重大變更將通過以下方式通知您：
+    </Text>
+    <Text style={styles.bulletPoint}>• 應用程式內通知</Text>
+    <Text style={styles.bulletPoint}>• 電子郵件通知（如果您提供了電子郵件）</Text>
+    <Text style={styles.bulletPoint}>• 應用程式商店更新說明</Text>
+    <Text style={styles.paragraph}>
+      繼續使用服務即表示您接受修改後的條款。
+    </Text>
+  </View>
 
-            {/* 9. 適用法律 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>9. 適用法律</Text>
-              <Text style={styles.paragraph}>
-                這些條款受香港特別行政區法律管轄，任何爭議將由香港特別行政區的法院處理。
-              </Text>
-            </View>
+  {/* 9. 聯繫我們 */}
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>9. 聯繫我們</Text>
+    <Text style={styles.paragraph}>
+      如果您對這些服務條款有任何疑問，請聯繫我們：
+    </Text>
+    <Text style={styles.bulletPoint}>• 電子郵件：support@cardreminder.app</Text>
+    <Text style={styles.bulletPoint}>• 應用程式內意見反饋功能</Text>
+    <Text style={styles.paragraph}>
+      我們將在收到您的詢問後5個工作日內回覆。
+    </Text>
+  </View>
 
-            {/* 10. 聯繫我們 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>10. 聯繫我們</Text>
-              <Text style={styles.paragraph}>
-                如果您對這些服務條款有任何疑問或建議，請通過以下方式聯繫我們：
-              </Text>
-              <Text style={styles.bulletPoint}>• 應用程式內的客服功能</Text>
-              <Text style={styles.bulletPoint}>• 電子郵件：support@cardreminder.app</Text>
-              <Text style={styles.paragraph}>
-                我們將盡力在合理時間內回應您的詢問。
-              </Text>
-            </View>
+  {/* 感謝段落 */}
+  <View style={styles.section}>
+    <Text style={styles.paragraph}>
+      感謝您選擇CardReminder。我們致力於為您提供安全可靠的信用卡管理服務。
+    </Text>
+  </View>
 
-            {/* 感謝段落 */}
-            <View style={styles.section}>
-              <Text style={styles.paragraph}>
-                感謝您選擇CardReminder。我們致力於為您提供優質的信用卡管理服務。
-              </Text>
-            </View>
-
-            {/* 底部間距 */}
-            <View style={styles.bottomSpacer} />
-          </ScrollView>
-        </SafeAreaView>
+  {/* 底部間距 */}
+  <View style={styles.bottomSpacer} />
+</ScrollView></SafeAreaView>
       </Animated.View>
     </View>
   );

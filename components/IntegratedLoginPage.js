@@ -1,4 +1,4 @@
-// components/IntegratedLoginPage.js - 整合的登入頁面
+// components/IntegratedLoginPage.js - 整合的登入頁面（新增語言切換功能和完整國際化支援）
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -14,12 +14,21 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { authService } from '../firebase';
 
-export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignUp, onNavigateToForgotPassword, getText }) {
+export default function IntegratedLoginPage({ 
+  onLogin, 
+  onBack, 
+  onNavigateToSignUp, 
+  onNavigateToForgotPassword, 
+  getText,
+  currentLanguage = 'en',
+  onLanguageChange
+}) {
   // 主要狀態管理
   const [loginMethod, setLoginMethod] = useState('email'); // 'email' 或 'phone'
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +45,9 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [canResend, setCanResend] = useState(true);
+  
+  // 🔥 新增：語言切換相關狀態
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   
   // 引用管理
   const passwordInputRef = useRef(null);
@@ -60,6 +72,14 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
     Keyboard.dismiss();
   };
 
+  // 🔥 新增：語言切換處理函數
+  const handleLanguageSelect = (languageCode) => {
+    if (onLanguageChange && typeof onLanguageChange === 'function') {
+      onLanguageChange(languageCode);
+    }
+    setShowLanguageModal(false);
+  };
+
   // 切換登入方式
   const switchLoginMethod = (method) => {
     setLoginMethod(method);
@@ -82,13 +102,22 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
     return cleaned;
   };
 
-  // 處理電話號碼輸入
-  const handlePhoneNumberChange = (text) => {
-    const formatted = formatPhoneDisplay(text);
-    if (formatted.replace(/\s/g, '').length <= 8) {
-      setPhoneNumber(formatted);
+  // 🔥 改進的電話號碼輸入處理 - 支援自由編輯和刪除
+const handlePhoneNumberChange = (text) => {
+  // 移除所有非數字字符
+  const cleanedText = text.replace(/\D/g, '');
+  
+  // 限制最大長度為8位數字
+  if (cleanedText.length <= 8) {
+    // 格式化顯示：前4位 + 空格 + 後4位
+    let formattedText = cleanedText;
+    if (cleanedText.length > 4) {
+      formattedText = cleanedText.slice(0, 4) + ' ' + cleanedText.slice(4);
     }
-  };
+    
+    setPhoneNumber(formattedText);
+  }
+};
 
   // 🔥 改進的驗證碼輸入處理 - 解決刪除問題
   const handleVerificationCodeChange = (text) => {
@@ -103,18 +132,18 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
   const handleEmailLogin = async () => {
     // 驗證輸入
     if (!email.trim()) {
-      Alert.alert('輸入錯誤', '請輸入您的電子郵件地址');
+      Alert.alert(getText('integratedLogin.inputError'), getText('integratedLogin.emailRequired'));
       return;
     }
 
     if (!password.trim()) {
-      Alert.alert('輸入錯誤', '請輸入您的密碼');
+      Alert.alert(getText('integratedLogin.inputError'), getText('integratedLogin.passwordRequired'));
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('格式錯誤', '請輸入有效的電子郵件地址');
+      Alert.alert(getText('integratedLogin.formatError'), getText('integratedLogin.invalidEmail'));
       return;
     }
 
@@ -138,27 +167,27 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
         }
       } else if (result.needsVerification) {
         Alert.alert(
-          '需要驗證',
+          getText('common.error'),
           result.error,
           [
             {
-              text: '重新發送驗證郵件',
+              text: getText('integratedLogin.didNotReceiveEmail'),
               onPress: async () => {
                 const resendResult = await authService.resendVerificationEmail();
                 if (resendResult.success) {
-                  Alert.alert('成功', '驗證郵件已重新發送，請檢查您的郵箱');
+                  Alert.alert(getText('common.success'), getText('integratedLogin.resendEmailSuccess'));
                 }
               }
             },
-            { text: '確定', style: 'cancel' }
+            { text: getText('common.ok'), style: 'cancel' }
           ]
         );
       } else {
-        Alert.alert('登入錯誤', result.error || '登入失敗，請檢查您的電子郵件和密碼');
+        Alert.alert(getText('integratedLogin.loginError'), result.error || getText('integratedLogin.loginFailed'));
       }
     } catch (error) {
       console.error('Email登入錯誤:', error);
-      Alert.alert('登入錯誤', '登入過程中發生錯誤，請稍後再試');
+      Alert.alert(getText('integratedLogin.loginError'), getText('integratedLogin.networkError'));
     } finally {
       setIsLoading(false);
     }
@@ -167,13 +196,13 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
   // 🔥 處理發送電話驗證碼
   const handleSendPhoneCode = async () => {
     if (!phoneNumber.trim()) {
-      Alert.alert('輸入錯誤', '請輸入您的手機號碼');
+      Alert.alert(getText('integratedLogin.inputError'), getText('integratedLogin.phoneRequired'));
       return;
     }
 
     const validation = authService.validateHongKongPhoneNumber(phoneNumber);
     if (!validation.isValid) {
-      Alert.alert('格式錯誤', validation.error);
+      Alert.alert(getText('integratedLogin.formatError'), validation.error);
       return;
     }
 
@@ -190,11 +219,14 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
         
         if (result.isMock) {
           Alert.alert(
-            '開發模式提示',
-            `模擬驗證碼已"發送"至 ${result.phoneNumber}\n\n🧪 開發模式說明：\n• 您可以使用任何6位數字作為驗證碼\n• 例如：123456、888888等\n• 這僅在開發環境中有效`
+            getText('integratedLogin.devModeTitle'),
+            getText('integratedLogin.devModeMessage').replace('{phone}', result.phoneNumber)
           );
         } else {
-          Alert.alert('驗證碼已發送', `SMS驗證碼已發送至 ${result.phoneNumber}\n請檢查您的手機短信`);
+          Alert.alert(
+            getText('integratedLogin.codeSent'), 
+            getText('integratedLogin.codeSentMessage').replace('{phone}', result.phoneNumber)
+          );
         }
         
         // 自動聚焦到驗證碼輸入框
@@ -202,11 +234,11 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
           otpInputRef.current?.focus();
         }, 500);
       } else {
-        Alert.alert('發送失敗', result.error || '無法發送驗證碼，請稍後再試');
+        Alert.alert(getText('integratedLogin.sendFailed'), result.error || getText('integratedLogin.codeSendFailed'));
       }
     } catch (error) {
       console.error('發送驗證碼錯誤:', error);
-      Alert.alert('發送失敗', '發送驗證碼時發生錯誤，請檢查網絡連接後重試');
+      Alert.alert(getText('integratedLogin.sendFailed'), getText('integratedLogin.networkError'));
     } finally {
       setIsLoading(false);
     }
@@ -215,12 +247,12 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
   // 🔥 處理電話驗證碼確認
   const handleVerifyPhoneCode = async () => {
     if (!verificationCode.trim()) {
-      Alert.alert('輸入錯誤', '請輸入6位數驗證碼');
+      Alert.alert(getText('integratedLogin.inputError'), getText('integratedLogin.codeRequired'));
       return;
     }
 
     if (verificationCode.length !== 6) {
-      Alert.alert('格式錯誤', '驗證碼必須是6位數字');
+      Alert.alert(getText('integratedLogin.formatError'), getText('integratedLogin.invalidCode'));
       return;
     }
 
@@ -242,11 +274,11 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
         };
         
         Alert.alert(
-          '登入成功',
-          `歡迎回來，${userData.name}！`,
+          getText('integratedLogin.loginSuccess'),
+          getText('integratedLogin.welcomeBack').replace('{name}', userData.name),
           [
             {
-              text: '開始使用',
+              text: getText('integratedLogin.getStarted'),
               onPress: () => {
                 if (onLogin && typeof onLogin === 'function') {
                   onLogin(userData);
@@ -256,11 +288,11 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
           ]
         );
       } else {
-        Alert.alert('驗證失敗', result.error || '驗證碼錯誤，請檢查後重新輸入');
+        Alert.alert(getText('integratedLogin.verificationFailed'), result.error || getText('integratedLogin.codeVerifyFailed'));
       }
     } catch (error) {
       console.error('驗證碼確認錯誤:', error);
-      Alert.alert('驗證失敗', '驗證過程中發生錯誤，請稍後再試');
+      Alert.alert(getText('integratedLogin.verificationFailed'), getText('integratedLogin.networkError'));
     } finally {
       setIsLoading(false);
     }
@@ -284,13 +316,13 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
         setResendCooldown(60);
         setCanResend(false);
         
-        Alert.alert('重新發送成功', '新的驗證碼已發送到您的手機，請查收');
+        Alert.alert(getText('integratedSignUp.resendSuccess'), getText('integratedSignUp.newCodeSent'));
       } else {
-        Alert.alert('發送失敗', result.error || '無法重新發送驗證碼，請稍後再試');
+        Alert.alert(getText('integratedLogin.sendFailed'), result.error || getText('integratedLogin.codeSendFailed'));
       }
     } catch (error) {
       console.error('重新發送驗證碼錯誤:', error);
-      Alert.alert('發送失敗', '重新發送驗證碼時發生錯誤，請稍後再試');
+      Alert.alert(getText('integratedLogin.sendFailed'), getText('integratedLogin.networkError'));
     } finally {
       setIsLoading(false);
     }
@@ -329,14 +361,28 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* 返回按鈕 */}
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={handleBackPress}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="arrow-back" size={24} color="#666666" />
-            </TouchableOpacity>
+            {/* 🔥 導航欄 - 包含返回按鈕和語言切換按鈕 */}
+            <View style={styles.headerNav}>
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={handleBackPress}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="arrow-back" size={24} color="#666666" />
+              </TouchableOpacity>
+
+              {/* 🔥 新增：語言切換按鈕 */}
+              <TouchableOpacity 
+                style={styles.languageButton}
+                onPress={() => setShowLanguageModal(true)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="language" size={24} color="#666666" />
+                <Text style={styles.languageButtonText}>
+                  {currentLanguage === 'en' ? 'EN' : '中'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* 插圖和標題區域 */}
             <View style={styles.headerSection}>
@@ -345,8 +391,8 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                 style={styles.illustration}
                 resizeMode="contain"
               />
-              <Text style={styles.appTitle}>CardReminder</Text>
-              <Text style={styles.welcomeText}>歡迎回來！請選擇登入方式</Text>
+              <Text style={styles.appTitle}>{getText('integratedLogin.title')}</Text>
+              <Text style={styles.welcomeText}>{getText('integratedLogin.welcomeText')}</Text>
             </View>
 
             {/* 🔥 登入方式選擇按鈕 */}
@@ -370,7 +416,7 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                     loginMethod === 'email' && styles.methodButtonTextActive
                   ]}
                 >
-                  使用電子郵件登入
+                  {getText('integratedLogin.emailMethod')}
                 </Text>
               </TouchableOpacity>
 
@@ -393,7 +439,7 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                     loginMethod === 'phone' && styles.methodButtonTextActive
                   ]}
                 >
-                  使用手機號碼登入
+                  {getText('integratedLogin.phoneMethod')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -404,10 +450,10 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                 // 電子郵件登入表單
                 <>
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>電子郵件</Text>
+                    <Text style={styles.inputLabel}>{getText('integratedLogin.email')}</Text>
                     <TextInput
                       style={[styles.textInput, { letterSpacing: 0 }]} // 🔥 修復字距問題
-                      placeholder="輸入您的電子郵件"
+                      placeholder={getText('integratedLogin.enterEmail')}
                       placeholderTextColor="#999999"
                       value={email}
                       onChangeText={setEmail}
@@ -421,12 +467,12 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                   </View>
 
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>密碼</Text>
+                    <Text style={styles.inputLabel}>{getText('integratedLogin.password')}</Text>
                     <View style={styles.passwordContainer}>
                       <TextInput
                         ref={passwordInputRef}
                         style={[styles.passwordInput, { letterSpacing: 0 }]} // 🔥 修復字距問題
-                        placeholder="輸入您的密碼"
+                        placeholder={getText('integratedLogin.enterPassword')}
                         placeholderTextColor="#999999"
                         value={password}
                         onChangeText={setPassword}
@@ -452,7 +498,7 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                   {/* 忘記密碼連結 */}
                   <View style={styles.forgotPasswordSection}>
                     <TouchableOpacity onPress={handleForgotPasswordNavigation}>
-                      <Text style={styles.forgotPasswordText}>忘記密碼？</Text>
+                      <Text style={styles.forgotPasswordText}>{getText('integratedLogin.forgotPassword')}</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -466,12 +512,12 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                     {isLoading ? (
                       <View style={styles.loginButtonContent}>
                         <ActivityIndicator size="small" color="#FFFFFF" />
-                        <Text style={styles.loginButtonText}>登入中...</Text>
+                        <Text style={styles.loginButtonText}>{getText('integratedLogin.signingIn')}</Text>
                       </View>
                     ) : (
                       <View style={styles.loginButtonContent}>
                         <MaterialIcons name="login" size={20} color="#FFFFFF" />
-                        <Text style={styles.loginButtonText}>登入</Text>
+                        <Text style={styles.loginButtonText}>{getText('integratedLogin.signInButton')}</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -480,7 +526,7 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                 // 電話登入表單
                 <>
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>手機號碼</Text>
+                    <Text style={styles.inputLabel}>{getText('integratedLogin.phoneNumber')}</Text>
                     <View style={styles.phoneContainer}>
                       <View style={styles.countryCodeContainer}>
                         <Text style={styles.countryCode}>🇭🇰 +852</Text>
@@ -488,7 +534,7 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                       <TextInput
                         ref={phoneInputRef}
                         style={[styles.phoneInput, { letterSpacing: 0 }]} // 🔥 修復字距問題
-                        placeholder="9123 4567"
+                        placeholder={getText('integratedLogin.enterPhoneNumber')}
                         placeholderTextColor="#999999"
                         value={phoneNumber}
                         onChangeText={handlePhoneNumberChange}
@@ -498,7 +544,7 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                         editable={!isLoading}
                       />
                     </View>
-                    <Text style={styles.phoneHint}>我們將發送驗證碼到這個號碼</Text>
+                    <Text style={styles.phoneHint}>{getText('integratedLogin.phoneHint')}</Text>
                   </View>
 
                   {/* 發送驗證碼按鈕 */}
@@ -512,12 +558,12 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                       {isLoading ? (
                         <View style={styles.sendCodeButtonContent}>
                           <ActivityIndicator size="small" color="#FFFFFF" />
-                          <Text style={styles.sendCodeButtonText}>發送中...</Text>
+                          <Text style={styles.sendCodeButtonText}>{getText('integratedLogin.sendingCode')}</Text>
                         </View>
                       ) : (
                         <View style={styles.sendCodeButtonContent}>
                           <MaterialIcons name="sms" size={20} color="#FFFFFF" />
-                          <Text style={styles.sendCodeButtonText}>發送驗證碼</Text>
+                          <Text style={styles.sendCodeButtonText}>{getText('integratedLogin.sendCodeButton')}</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -527,11 +573,11 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                   {showOTPInput && (
                     <>
                       <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>驗證碼</Text>
+                        <Text style={styles.inputLabel}>{getText('integratedLogin.verificationCode')}</Text>
                         <TextInput
                           ref={otpInputRef}
                           style={[styles.otpInput, { letterSpacing: 4 }]} // 🔥 只有驗證碼需要字距
-                          placeholder="000000"
+                          placeholder={getText('integratedLogin.enterVerificationCode')}
                           placeholderTextColor="#CCCCCC"
                           value={verificationCode}
                           onChangeText={handleVerificationCodeChange} // 🔥 使用改進的處理函數
@@ -543,12 +589,12 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                           editable={!isLoading}
                           autoFocus={true}
                         />
-                        <Text style={styles.otpHint}>請輸入收到的6位數驗證碼</Text>
+                        <Text style={styles.otpHint}>{getText('integratedLogin.otpHint')}</Text>
                       </View>
 
                       {/* 重新發送區域 */}
                       <View style={styles.resendSection}>
-                        <Text style={styles.resendText}>沒有收到驗證碼？</Text>
+                        <Text style={styles.resendText}>{getText('integratedLogin.noCodeReceived')}</Text>
                         <TouchableOpacity
                           style={[styles.resendButton, !canResend && styles.resendButtonDisabled]}
                           onPress={handleResendCode}
@@ -556,7 +602,7 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                           activeOpacity={0.7}
                         >
                           <Text style={[styles.resendButtonText, !canResend && styles.resendButtonTextDisabled]}>
-                            {canResend ? '重新發送' : `${resendCooldown}秒後可重新發送`}
+                            {canResend ? getText('integratedLogin.resendCode') : `${resendCooldown} ${getText('integratedLogin.resendCodeIn')}`}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -575,12 +621,12 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
                         {isLoading ? (
                           <View style={styles.verifyButtonContent}>
                             <ActivityIndicator size="small" color="#FFFFFF" />
-                            <Text style={styles.verifyButtonText}>驗證中...</Text>
+                            <Text style={styles.verifyButtonText}>{getText('integratedLogin.verifying')}</Text>
                           </View>
                         ) : (
                           <View style={styles.verifyButtonContent}>
                             <MaterialIcons name="verified-user" size={20} color="#FFFFFF" />
-                            <Text style={styles.verifyButtonText}>確認驗證碼</Text>
+                            <Text style={styles.verifyButtonText}>{getText('integratedLogin.verifyCodeButton')}</Text>
                           </View>
                         )}
                       </TouchableOpacity>
@@ -593,14 +639,85 @@ export default function IntegratedLoginPage({ onLogin, onBack, onNavigateToSignU
             {/* 註冊連結 */}
             <View style={styles.signUpSection}>
               <Text style={styles.signUpText}>
-                還沒有帳戶？{' '}
+                {getText('integratedLogin.noAccount')}{' '}
                 <Text style={styles.signUpLink} onPress={handleSignUpNavigation}>
-                  立即註冊
+                  {getText('integratedLogin.signUpNow')}
                 </Text>
               </Text>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* 🔥 新增：語言選擇Modal */}
+        <Modal
+          visible={showLanguageModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowLanguageModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{getText('languageSelector.title')}</Text>
+              
+              <View style={styles.languageOptionsContainer}>
+                <TouchableOpacity 
+                  style={[
+                    styles.languageOption,
+                    currentLanguage === 'en' && styles.selectedLanguageOption
+                  ]}
+                  onPress={() => handleLanguageSelect('en')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.languageOptionContent}>
+                    <View>
+                      <Text style={[
+                        styles.languageOptionTitle,
+                        currentLanguage === 'en' && styles.selectedLanguageTitle
+                      ]}>
+                        {getText('languageSelector.english')}
+                      </Text>
+                      <Text style={styles.languageOptionSubtitle}>English</Text>
+                    </View>
+                    {currentLanguage === 'en' && (
+                      <MaterialIcons name="check" size={24} color="#4A90E2" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[
+                    styles.languageOption,
+                    currentLanguage === 'zh-TW' && styles.selectedLanguageOption
+                  ]}
+                  onPress={() => handleLanguageSelect('zh-TW')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.languageOptionContent}>
+                    <View>
+                      <Text style={[
+                        styles.languageOptionTitle,
+                        currentLanguage === 'zh-TW' && styles.selectedLanguageTitle
+                      ]}>
+                        {getText('languageSelector.traditionalChinese')}
+                      </Text>
+                      <Text style={styles.languageOptionSubtitle}>繁體中文</Text>
+                    </View>
+                    {currentLanguage === 'zh-TW' && (
+                      <MaterialIcons name="check" size={24} color="#4A90E2" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowLanguageModal(false)}
+              >
+                <Text style={styles.modalCloseText}>{getText('languageSelector.cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );
@@ -620,6 +737,13 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 40,
   },
+  // 🔥 新增：導航欄樣式
+  headerNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   backButton: {
     width: 40,
     height: 40,
@@ -627,12 +751,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  // 🔥 新增：語言切換按鈕樣式
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  languageButtonText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
   },
   headerSection: {
     alignItems: 'center',
@@ -931,5 +1074,70 @@ const styles = StyleSheet.create({
     color: '#4A90E2',
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  // 🔥 新增：語言選擇Modal樣式
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  languageOptionsContainer: {
+    marginBottom: 16,
+  },
+  languageOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  selectedLanguageOption: {
+    borderColor: '#4A90E2',
+    backgroundColor: '#F3F9FF',
+  },
+  languageOptionContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  languageOptionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+    marginBottom: 2,
+  },
+  selectedLanguageTitle: {
+    color: '#4A90E2',
+  },
+  languageOptionSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  modalCloseButton: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalCloseText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

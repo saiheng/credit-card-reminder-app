@@ -63,7 +63,7 @@ export default function MyCardsPage({
 
   // Apple風格邊緣滑動返回功能
   const edgeWidth = 20;
-  const swipeThreshold = screenWidth * 0.3;
+  const swipeThreshold = screenWidth * 0.2; // 滑動閾值，20%屏幕寬度
   const [slideAnimation] = useState(new Animated.Value(0));
   const [isSliding, setIsSliding] = useState(false);
 
@@ -816,18 +816,49 @@ export default function MyCardsPage({
     const [showNotificationButton, setShowNotificationButton] = useState(false);
     
     const cardPanResponder = PanResponder.create({
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        const hasMinimalMovement = Math.abs(gestureState.dx) > 0.3;
-        if (hasMinimalMovement) {
-          console.log('🎯 雙向滑動手勢識別成功', {
-            dx: gestureState.dx,
-            threshold: 0.3
-          });
-          return true;
+onMoveShouldSetPanResponder: (evt, gestureState) => {
+        const horizontal = Math.abs(gestureState.dx);
+        const vertical = Math.abs(gestureState.dy);
+        
+        // 🔥 極度靈敏檢測：任何微小的水平移動都能觸發
+        const isTinyTouch = horizontal > 0.1;    // 微觸判斷：0.1像素
+        const isLightTouch = horizontal > 0.3;   // 輕觸判斷：0.3像素
+        const isMediumSwipe = horizontal > 1;    // 中等滑動判斷：1像素
+        const isHeavyDrag = horizontal > 2;      // 大力拖曳判斷：2像素
+        
+        // 🔥 超寬鬆方向判斷：幾乎任何有水平移動趨勢的手勢都接受
+        let directionOk = false;
+        
+        if (isHeavyDrag) {
+          // 大力拖曳：極寬鬆的方向要求
+          directionOk = horizontal > vertical * 0.1;
+          console.log('🏋️ 大力拖曳模式', { horizontal, vertical });
+        } else if (isMediumSwipe) {
+          // 中等滑動：寬鬆方向要求
+          directionOk = horizontal > vertical * 0.2;
+          console.log('🤏 中等滑動模式', { horizontal, vertical });
+        } else if (isLightTouch) {
+          // 輕觸：標準方向要求
+          directionOk = horizontal > vertical * 0.4;
+          console.log('✨ 輕觸模式', { horizontal, vertical });
+        } else if (isTinyTouch) {
+          // 微觸：較嚴格但仍然寬鬆的方向要求
+          directionOk = horizontal > vertical * 0.5;
+          console.log('🎯 微觸模式', { horizontal, vertical });
         }
-        return false;
+        
+        const shouldStart = (isTinyTouch || isLightTouch || isMediumSwipe || isHeavyDrag) && directionOk;
+        
+        if (shouldStart) {
+          console.log('✅ 卡片滑動啟動成功', {
+            類型: isHeavyDrag ? '大力拖曳' : isMediumSwipe ? '中等滑動' : isLightTouch ? '輕觸' : '微觸',
+            水平: horizontal,
+            垂直: vertical
+          });
+        }
+        
+        return shouldStart;
       },
-      
       onPanResponderGrant: (evt) => {
         setIsActivelyDragging(true);
         setSwipeDirection('none');
@@ -835,19 +866,20 @@ export default function MyCardsPage({
         console.log('🤏 雙向滑動開始');
       },
       
-      onPanResponderMove: (evt, gestureState) => {
+onPanResponderMove: (evt, gestureState) => {
         if (!isActivelyDragging) return;
         
         const currentX = gestureState.dx;
         const swipeDistance = Math.abs(currentX);
         
+        // 🔥 極早期方向鎖定：提升極度響應性
         if (swipeDirection === 'none') {
-          if (currentX < -0.5) {
+          if (currentX < -0.1) { // 極小的移動就鎖定方向
             setSwipeDirection('left');
-            console.log('🔒 方向鎖定：向左（編輯/刪除）');
-          } else if (currentX > 0.5) {
+            console.log('🔒 左滑方向鎖定');
+          } else if (currentX > 0.1) {
             setSwipeDirection('right');
-            console.log('🔒 方向鎖定：向右（通知管理）');
+            console.log('🔒 右滑方向鎖定');
           }
         }
         
@@ -856,22 +888,27 @@ export default function MyCardsPage({
           const clampedDistance = Math.min(swipeDistance, maxLeftSwipe);
           translateX.setValue(-clampedDistance);
           
-          if (swipeDistance >= 4 && swipeDistance <= 6) {
+          // 🔥 即時觸感反饋：用戶一滑動就有反應
+          if (swipeDistance >= 0.5 && swipeDistance <= 1) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            console.log('✨ 左滑極早期反饋');
+          } else if (swipeDistance >= 8 && swipeDistance <= 9) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            console.log('✏️ 左滑觸發閾值達成', { distance: swipeDistance });
+            console.log('✏️ 左滑中期反饋');
           }
         } else if (currentX > 0) {
           const maxRightSwipe = 120;
           const clampedDistance = Math.min(swipeDistance, maxRightSwipe);
           translateX.setValue(clampedDistance);
           
-          if (swipeDistance >= 4 && swipeDistance <= 6) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            console.log('🔔 右滑觸發閾值達成', { distance: swipeDistance });
+          // 🔥 右滑即時反饋
+          if (swipeDistance >= 0.5 && swipeDistance <= 1) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            console.log('✨ 右滑極早期反饋');
           }
         }
       },
-      
+
       onPanResponderRelease: (evt, gestureState) => {
         const swipeDistance = Math.abs(gestureState.dx);
         const swipeVelocity = Math.abs(gestureState.vx);
@@ -883,24 +920,39 @@ export default function MyCardsPage({
           finalX: gestureState.dx
         });
         
-        if (gestureState.dx < 0) {
-          // 左滑邏輯保持不變
-          if (swipeDistance > 40 || (swipeDistance > 20 && swipeVelocity > 0.2)) {
-            snapToLeftStage(2);
-          } else if (swipeDistance > 20) {
-            snapToLeftStage(1);
-          } else {
-            snapToStage(0);
+if (gestureState.dx < 0) {        } else if (gestureState.dx > 0) {
+          // 🔥 極靈敏右滑：與左滑保持一致的靈敏度
+          const rightSwipeThreshold = 1; // 極低門檻：1像素
+          
+          // 🔥 多種觸發條件：支援各種右滑習慣
+          let shouldTriggerRight = false;
+          let triggerReason = '';
+          
+          if (swipeVelocity > 0.05 && swipeDistance > rightSwipeThreshold) {
+            shouldTriggerRight = true;
+            triggerReason = '快速右滑';
+          } else if (swipeDistance > 6) {
+            shouldTriggerRight = true;
+            triggerReason = '距離右滑';
+          } else if (swipeDistance > rightSwipeThreshold && swipeVelocity > 0.01) {
+            shouldTriggerRight = true;
+            triggerReason = '輕微右滑';
           }
-        } else if (gestureState.dx > 0) {
-          // 🔥 修復：右滑只顯示按鈕，不直接觸發模態框
-          if (swipeDistance > 4) {
+          
+          console.log('👉 右滑檢測', {
+            距離: swipeDistance,
+            速度: swipeVelocity,
+            觸發: shouldTriggerRight,
+            原因: triggerReason
+          });
+          
+          if (shouldTriggerRight) {
             snapToRightStage(1);
-            setShowNotificationButton(true); // 顯示通知按鈕
+            setShowNotificationButton(true);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            console.log('🔔 右滑通知按鈕顯示！');
+            console.log(`🔔 右滑成功！原因：${triggerReason}`);
             
-            // 3秒後自動隱藏按鈕（如果用戶沒有操作）
+            // 3秒後自動隱藏按鈕
             setTimeout(() => {
               setShowNotificationButton(false);
               snapToStage(0);
@@ -908,10 +960,7 @@ export default function MyCardsPage({
           } else {
             snapToStage(0);
           }
-        } else {
-          snapToStage(0);
         }
-        
         setIsActivelyDragging(false);
         setSwipeDirection('none');
       },

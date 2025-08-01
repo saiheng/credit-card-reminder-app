@@ -1,4 +1,4 @@
-// App.js - 🔥 完全重構：邏輯正確的付款記錄系統
+// App.js - 🔥 更新：添加語言切換支援到整合登入和註冊頁面
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -508,27 +508,31 @@ const handleSignUp = (userInfo) => {
         );
 
       case 'Login':
-  return (
-    <IntegratedLoginPage 
-      onLogin={handleLogin}
-      onBack={() => handleNavigate('Welcome')}
-      onNavigateToSignUp={() => handleNavigate('SignUp')}
-      onNavigateToForgotPassword={() => handleNavigate('ForgotPassword')}
-      getText={getText}
-    />
-  );
+        return (
+          <IntegratedLoginPage 
+            onLogin={handleLogin}
+            onBack={() => handleNavigate('Welcome')}
+            onNavigateToSignUp={() => handleNavigate('SignUp')}
+            onNavigateToForgotPassword={() => handleNavigate('ForgotPassword')}
+            getText={getText}
+            currentLanguage={currentLanguage}
+            onLanguageChange={handleLanguageChange}
+          />
+        );
 
       case 'SignUp':
-  return (
-    <IntegratedSignUpPage 
-      onSignUp={handleSignUp}
-      onBack={() => handleNavigate('Welcome')}
-      onNavigateToLogin={() => handleNavigate('Login')}
-      onNavigateToTerms={() => handleNavigate('TermsOfService')}
-      onNavigateToPrivacy={() => handleNavigate('PrivacyPolicy')}
-      getText={getText}
-    />
-  );
+        return (
+          <IntegratedSignUpPage 
+            onSignUp={handleSignUp}
+            onBack={() => handleNavigate('Welcome')}
+            onNavigateToLogin={() => handleNavigate('Login')}
+            onNavigateToTerms={() => handleNavigate('TermsOfService')}
+            onNavigateToPrivacy={() => handleNavigate('PrivacyPolicy')}
+            getText={getText}
+            currentLanguage={currentLanguage}
+            onLanguageChange={handleLanguageChange}
+          />
+        );
 
       case 'Home':
         return (
